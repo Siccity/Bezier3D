@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+using System;
+using System.Reflection;
 
 [CustomEditor(typeof(Bezier3DSpline))]
 public class Bezier3DSplineEditor : Editor {
@@ -21,6 +23,12 @@ public class Bezier3DSplineEditor : Editor {
     }
 
     void OnEnable() {
+        //Code for changing component icon. Not working yet.
+        /*var method = typeof(EditorGUIUtility).GetMethod("SetIconForObject", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+        if (method != null) {
+            method.Invoke(null, new System.Object[] { AssetDatabase.LoadAssetAtPath<MonoScript>("Assets/Plugins/Circuit/DocumentComponentBehaviour.cs"), Resources.Load<Texture2D>("icon") });
+            method.Invoke(null, new System.Object[] { AssetDatabase.LoadAssetAtPath<MonoScript>("Assets/Plugins/Circuit/DocumentComponentStateMachine.cs"), Resources.Load<Texture2D>("icon") });
+        }*/
         spline = target as Bezier3DSpline;
     }
 
@@ -37,8 +45,6 @@ public class Bezier3DSplineEditor : Editor {
         EditorGUILayout.LabelField("Spline settings");
 
         EditorGUI.indentLevel = 1;
-        EditorGUILayout.LabelField("Point count ", spline.KnotCount.ToString());
-        EditorGUILayout.LabelField("Spline length ", spline.totalLength.ToString());
 
         EditorGUI.BeginChangeCheck();
         int steps = spline.cacheDensity;
@@ -386,5 +392,34 @@ public class Bezier3DSplineEditor : Editor {
             Vector3 point = spline.GetPointInterpolated(t);
             Handles.DrawLine(point, point + Vector3.up * 0.1f);
         }
+    }
+
+    public override bool HasPreviewGUI() {
+        return true;
+    }
+    public override void OnPreviewGUI(Rect r, GUIStyle background) {
+        if (Event.current.type == EventType.Repaint) {
+            RectOffset rectOffset = new RectOffset(-5, -5, -5, -5);
+            r = rectOffset.Add(r);
+            Rect position1 = r;
+            Rect position2 = r;
+            position1.width = 110f;
+            position2.xMin += 110f;
+            position2.width = 110f;
+            EditorGUI.LabelField(position1, "Property", EditorStyles.boldLabel);
+            EditorGUI.LabelField(position2, "Value", EditorStyles.boldLabel);
+            position1.y += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+            position2.y += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+            ShowProperty(ref position1, ref position2, "Point Count", spline.KnotCount.ToString());
+            ShowProperty(ref position1, ref position2, "Total Length", spline.totalLength.ToString());
+
+        } 
+    }
+
+    private void ShowProperty(ref Rect labelRect, ref Rect valueRect, string label, string value) {
+        EditorGUI.LabelField(labelRect, label, EditorStyles.label);
+        EditorGUI.LabelField(valueRect, value, EditorStyles.label);
+        labelRect.y += EditorGUIUtility.singleLineHeight;
+        valueRect.y += EditorGUIUtility.singleLineHeight;
     }
 }
