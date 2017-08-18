@@ -381,7 +381,7 @@ public class Bezier3DSplineEditor : Editor {
     }
 
     private void VisualizeTime(int steps) {
-        for (float t = 0f; t < spline.CurveCount; t += 1f / steps) {
+        for (float t = 0f; t < 1f; t += 1f / (steps * spline.CurveCount)) {
             Vector3 point = spline.GetPoint(t);
             Handles.DrawLine(point, point + Vector3.up * 0.1f);
         }

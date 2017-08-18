@@ -48,8 +48,9 @@ public class Bezier3DSpline : MonoBehaviour{
         _totalLength = GetTotalLength();
     }
 
-    /// <summary> Return point in relation to world </summary>
+    /// <summary> Return a point where 0 = start, 1 = end </summary>
 	public Vector3 GetPoint(float t) {
+        t = Mathf.Repeat(t, 1f) * CurveCount;
         for (int i = 0; i < CurveCount; i++) {
             if (t > 1f) t -= 1f;
             else return transform.TransformPoint(curves[i].GetPointTime(t));
