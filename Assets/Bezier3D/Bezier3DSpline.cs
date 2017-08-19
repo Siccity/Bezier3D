@@ -48,32 +48,58 @@ public class Bezier3DSpline : MonoBehaviour{
         _totalLength = GetTotalLength();
     }
 
-    /// <summary> Return a point where 0 = start, 1 = end </summary>
+    /// <summary> Return point at lerped position where 0 = start, 1 = end </summary>
 	public Vector3 GetPoint(float t) {
-        t = Mathf.Repeat(t, 1f) * CurveCount;
-        for (int i = 0; i < CurveCount; i++) {
-            if (t > 1f) t -= 1f;
-            else return transform.TransformPoint(curves[i].GetPointTime(t));
-        }
-        return transform.TransformPoint(curves[CurveCount - 1].GetPointTime(1f));
+        Bezier3DCurve curve = GetCurve(t, out t);
+        return transform.TransformPoint(curve.GetPoint(t));
     }
 
-    /// <summary> Return point in relation to world at set distance along spline </summary>
-    public Vector3 GetPointByDistance(float dist) {
-        for (int i = 0; i < CurveCount; i++) {
-            if (curves[i].length < dist) dist -= curves[i].length;
-            else return transform.TransformPoint(curves[i].GetPointDistance(dist));
-        }
-        return transform.TransformPoint(curves[CurveCount - 1].GetPointTime(1f));
+    /// <summary> Return point in at set distance along spline </summary>
+    public Vector3 GetPointByDistance(float dist, bool world = true) {
+        Bezier3DCurve curve = GetCurveDistance(dist, out dist);
+        if (world) return transform.TransformPoint(curve.GetPointDistance(dist));
+        else return curve.GetPointDistance(dist);
     }
 
-    /// <summary> Return forward vector in relation to world at set distance along spline </summary>
-    public Vector3 GetForwardByDistance(float dist) {
+    /// <summary> Return forward vector at lerped position where 0 = start, 1 = end </summary>
+	public Vector3 GetForward(float t) {
+        Bezier3DCurve curve = GetCurve(t, out t);
+        return transform.TransformPoint(curve.GetForward(t));
+    }
+
+    /// <summary> Return forward vector at set distance along spline </summary>
+    public Vector3 GetForwardByDistance(float dist, bool world = true) {
+        Bezier3DCurve curve = GetCurveDistance(dist, out dist);
+        if (world) return transform.TransformPoint(curve.GetForwardDistance(dist));
+        return curve.GetForwardDistance(dist);
+    }
+
+    public Vector3 GetUp(float t) {
+        Vector3 up = Vector3.up;
+        bool set = false;
+        Quaternion rot_a = Quaternion.identity, rot_b = Quaternion.identity;
+        int t_a, t_b;
+        for (var i = 0; i < orientations.Count; i++) {
+            if (orientations[i].HasValue) {
+                if (!set) {
+                    set = true;
+                    rot_a = orientations[i].Value;
+                    rot_b = orientations[i].Value;
+                    t_a = i;
+                    t_b = i;
+                }
+            }
+        }
+        Vector3 tangent = GetForward(t);
+        return Vector3.ProjectOnPlane(rot_a * Vector3.up, tangent).normalized;
+    }
+
+    public float DistanceToTime(float dist) {
         for (int i = 0; i < CurveCount; i++) {
             if (curves[i].length < dist) dist -= curves[i].length;
-            else return transform.TransformPoint(curves[i].GetForwardDistance(dist));
+            else return curves[i].Dist2Time(dist);
         }
-        return transform.TransformPoint(curves[CurveCount - 1].GetPointTime(1f));
+        return 1f;
     }
 
     /// <summary> Get curve by index </summary>
@@ -166,18 +192,6 @@ public class Bezier3DSpline : MonoBehaviour{
             return new Knot(curves[i].a, curves[i - 1].c, curves[i].b,autoKnot[i], orientations[i]);
         }
     }
-
-    public Quaternion GetOrientationInterpolated(float dist) {
-        return Quaternion.identity;
-        Quaternion firstRot;
-        float firstRotPos;
-        Quaternion lastRot;
-        float lastRotPos;
-        for (int i = 0; i < CurveCount; i++) {
-            if (curves[i].length < dist) dist -= curves[i].length;
-            //else return transform.TransformPoint(curves[i].GetPointDistance(dist));
-        }
-    }
     #endregion
 
     public struct Knot {
@@ -202,6 +216,32 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 
     #region Private methods
+    private Bezier3DCurve GetCurve(float splineT, out float curveT) {
+        splineT = Mathf.Repeat(splineT, 1f) * CurveCount;
+        for (int i = 0; i < CurveCount; i++) {
+            if (splineT > 1f) splineT -= 1f;
+            else {
+                curveT = splineT;
+                return curves[i];
+            }
+        }
+        curveT = 1f;
+        return curves[CurveCount - 1];
+    }
+
+    private Bezier3DCurve GetCurveDistance(float splineDist, out float curveDist) {
+        for (int i = 0; i < CurveCount; i++) {
+            if (curves[i].length < splineDist) splineDist -= curves[i].length;
+            else {
+                curveDist = splineDist;
+                return curves[i];
+            }
+        }
+        curveDist = curves[CurveCount -1].length;
+        return curves[CurveCount - 1];
+    }
+
+
     private void AutomateKnot(int i) {
         float amount = autoKnot[i];
         if (amount == 0f) return;

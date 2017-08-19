@@ -11,8 +11,7 @@ public class Bezier3DSplineEditor : Editor {
     public static float handleSize = 0.1f;
     public static Vector2 guiOffset = new Vector2(10, 10);
     public static bool visualizeTime;
-    public static bool visualizeDistance = true;
-    public static bool visualizeTangent = true;
+    public static bool visualizeOrientation = true;
 	int activeKnot = -1;
     List<int> selectedKnots = new List<int>();
     static Bezier3DSpline spline;
@@ -131,11 +130,8 @@ public class Bezier3DSplineEditor : Editor {
         GUI.contentColor = visualizeTime? Color.green:Color.red;
         visualizeTime = GUILayout.Toggle(visualizeTime, new GUIContent("Debug Time", "Visualize time along spline"), style);
         GUILayout.Space(4);
-        GUI.contentColor = visualizeDistance ? Color.green : Color.red;
-        visualizeDistance = GUILayout.Toggle(visualizeDistance, new GUIContent("Debug Dist", "Visualize dist along spline"), style);
-        GUILayout.Space(4);
-        GUI.contentColor = visualizeTangent ? Color.green : Color.red;
-        visualizeTangent = GUILayout.Toggle(visualizeTangent, new GUIContent("Debug Tangent", "Visualize direction along spline"), style);
+        GUI.contentColor = visualizeOrientation ? Color.green : Color.red;
+        visualizeOrientation = GUILayout.Toggle(visualizeOrientation, new GUIContent("Debug Orientation", "Visualize orientation along spline"), style);
         GUILayout.EndArea();
         Handles.EndGUI();
 
@@ -143,8 +139,7 @@ public class Bezier3DSplineEditor : Editor {
         DrawUnselectedKnots();
 
         if (visualizeTime) VisualizeTime(10);
-        if (visualizeDistance) VisualizeDist();
-        if (visualizeTangent) VisualizeForward();
+        if (visualizeOrientation) VisualizeOrientation();
         if (activeKnot != -1) {
             if (selectedKnots.Count == 1) {
                 DrawSelectedSplitters();
@@ -391,18 +386,11 @@ public class Bezier3DSplineEditor : Editor {
         }
     }
 
-    private void VisualizeDist() {
+    private void VisualizeOrientation() {
         for (float t = 0f; t < spline.totalLength; t += 0.25f) {
             Vector3 point = spline.GetPointByDistance(t);
-            Handles.DrawLine(point, point + Vector3.up * 0.1f);
-        }
-    }
-
-    private void VisualizeForward() {
-        for (float t = 0f; t < spline.totalLength; t += 0.25f) {
-            Vector3 point = spline.GetPointByDistance(t);
-            Vector3 tangent = spline.GetForwardByDistance(t);
-            Handles.DrawLine(point, point + tangent * 0.1f);
+            Vector3 up = spline.GetUp(spline.DistanceToTime(t));
+            Handles.DrawLine(point, point + up * 0.1f);
         }
     }
 }

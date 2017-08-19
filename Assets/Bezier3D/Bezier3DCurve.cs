@@ -44,7 +44,7 @@ public struct Bezier3DCurve {
     }
 
     #region Public methods
-    public Vector3 GetPointTime(float t) {
+    public Vector3 GetPoint(float t) {
 		return GetPoint(_a, _B, _C, _d, t);
 	}
 
@@ -52,8 +52,12 @@ public struct Bezier3DCurve {
         return GetPoint(_a, _B, _C, _d, Dist2Time(distance));
     }
 
+    public Vector3 GetForward(float t) {
+        return GetForward(_a, _B, _C, _d, t);
+    }
+
     public Vector3 GetForwardDistance(float distance) {
-        return GetFirstDerivative(_a, _B, _C, _d, Dist2Time(distance));
+        return GetForward(_a, _B, _C, _d, Dist2Time(distance));
     }
 
     public float Dist2Time(float distance) {
@@ -101,8 +105,7 @@ public struct Bezier3DCurve {
 			3f * oneMinusT * t * t * c +
 			t * t * t * d;
 	}
-
-    private static Vector3 GetFirstDerivative(Vector3 a, Vector3 b, Vector3 c, Vector3 d, float t) {
+    private static Vector3 GetForward(Vector3 a, Vector3 b, Vector3 c, Vector3 d, float t) { //Also known as first derivative
 		t = Mathf.Clamp01(t);
 		float oneMinusT = 1f - t;
 		return
