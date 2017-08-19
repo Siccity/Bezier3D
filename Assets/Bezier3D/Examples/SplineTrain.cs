@@ -25,13 +25,13 @@ public class SplineTrain : MonoBehaviour {
     void SetPos(float pos) {
         switch (trainType) {
         case TrainType.Clamp:
-            transform.position = spline.GetPointInterpolated(pos);
+            transform.position = spline.GetPointByDistance(pos);
             break;
         case TrainType.Loop:
-            transform.position = spline.GetPointInterpolated(Mathf.Repeat(pos, spline.totalLength));
+            transform.position = spline.GetPointByDistance(Mathf.Repeat(pos, spline.totalLength));
             break;
         case TrainType.PingPong:
-            transform.position = spline.GetPointInterpolated(Mathf.PingPong(pos, spline.totalLength));
+            transform.position = spline.GetPointByDistance(Mathf.PingPong(pos, spline.totalLength));
             break;
         }
     }

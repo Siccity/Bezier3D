@@ -12,7 +12,7 @@ public class Bezier3DSplineEditor : Editor {
     public static Vector2 guiOffset = new Vector2(10, 10);
     public static bool visualizeTime;
     public static bool visualizeDistance = true;
-
+    public static bool visualizeTangent = true;
 	int activeKnot = -1;
     List<int> selectedKnots = new List<int>();
     static Bezier3DSpline spline;
@@ -133,6 +133,9 @@ public class Bezier3DSplineEditor : Editor {
         GUILayout.Space(4);
         GUI.contentColor = visualizeDistance ? Color.green : Color.red;
         visualizeDistance = GUILayout.Toggle(visualizeDistance, new GUIContent("Debug Dist", "Visualize dist along spline"), style);
+        GUILayout.Space(4);
+        GUI.contentColor = visualizeTangent ? Color.green : Color.red;
+        visualizeTangent = GUILayout.Toggle(visualizeTangent, new GUIContent("Debug Tangent", "Visualize direction along spline"), style);
         GUILayout.EndArea();
         Handles.EndGUI();
 
@@ -141,6 +144,7 @@ public class Bezier3DSplineEditor : Editor {
 
         if (visualizeTime) VisualizeTime(10);
         if (visualizeDistance) VisualizeDist();
+        if (visualizeTangent) VisualizeForward();
         if (activeKnot != -1) {
             if (selectedKnots.Count == 1) {
                 DrawSelectedSplitters();
@@ -389,37 +393,16 @@ public class Bezier3DSplineEditor : Editor {
 
     private void VisualizeDist() {
         for (float t = 0f; t < spline.totalLength; t += 0.25f) {
-            Vector3 point = spline.GetPointInterpolated(t);
+            Vector3 point = spline.GetPointByDistance(t);
             Handles.DrawLine(point, point + Vector3.up * 0.1f);
         }
     }
 
-    public override bool HasPreviewGUI() {
-        return true;
-    }
-    public override void OnPreviewGUI(Rect r, GUIStyle background) {
-        if (Event.current.type == EventType.Repaint) {
-            RectOffset rectOffset = new RectOffset(-5, -5, -5, -5);
-            r = rectOffset.Add(r);
-            Rect position1 = r;
-            Rect position2 = r;
-            position1.width = 110f;
-            position2.xMin += 110f;
-            position2.width = 110f;
-            EditorGUI.LabelField(position1, "Property", EditorStyles.boldLabel);
-            EditorGUI.LabelField(position2, "Value", EditorStyles.boldLabel);
-            position1.y += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
-            position2.y += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
-            ShowProperty(ref position1, ref position2, "Point Count", spline.KnotCount.ToString());
-            ShowProperty(ref position1, ref position2, "Total Length", spline.totalLength.ToString());
-
-        } 
-    }
-
-    private void ShowProperty(ref Rect labelRect, ref Rect valueRect, string label, string value) {
-        EditorGUI.LabelField(labelRect, label, EditorStyles.label);
-        EditorGUI.LabelField(valueRect, value, EditorStyles.label);
-        labelRect.y += EditorGUIUtility.singleLineHeight;
-        valueRect.y += EditorGUIUtility.singleLineHeight;
+    private void VisualizeForward() {
+        for (float t = 0f; t < spline.totalLength; t += 0.25f) {
+            Vector3 point = spline.GetPointByDistance(t);
+            Vector3 tangent = spline.GetForwardByDistance(t);
+            Handles.DrawLine(point, point + tangent * 0.1f);
+        }
     }
 }

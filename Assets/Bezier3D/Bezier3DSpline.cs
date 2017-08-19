@@ -58,11 +58,20 @@ public class Bezier3DSpline : MonoBehaviour{
         return transform.TransformPoint(curves[CurveCount - 1].GetPointTime(1f));
     }
 
-    /// <summary> Return point in relation to world </summary>
-    public Vector3 GetPointInterpolated(float dist) {
+    /// <summary> Return point in relation to world at set distance along spline </summary>
+    public Vector3 GetPointByDistance(float dist) {
         for (int i = 0; i < CurveCount; i++) {
             if (curves[i].length < dist) dist -= curves[i].length;
             else return transform.TransformPoint(curves[i].GetPointDistance(dist));
+        }
+        return transform.TransformPoint(curves[CurveCount - 1].GetPointTime(1f));
+    }
+
+    /// <summary> Return forward vector in relation to world at set distance along spline </summary>
+    public Vector3 GetForwardByDistance(float dist) {
+        for (int i = 0; i < CurveCount; i++) {
+            if (curves[i].length < dist) dist -= curves[i].length;
+            else return transform.TransformPoint(curves[i].GetForwardDistance(dist));
         }
         return transform.TransformPoint(curves[CurveCount - 1].GetPointTime(1f));
     }
@@ -250,9 +259,9 @@ public class Bezier3DSpline : MonoBehaviour{
             b = transform.TransformPoint(curve.b + curve.a);
             c = transform.TransformPoint(curve.c + curve.d);
             d = transform.TransformPoint(curve.d);
-            Vector3 prev = Bezier3DCurve.GetPointTime(a, b, c, d, 0f);
+            Vector3 prev = Bezier3DCurve.GetPoint(a, b, c, d, 0f);
             for (float t = 0f; t < 1f; t += 0.02f) {
-                Vector3 cur = Bezier3DCurve.GetPointTime(a, b, c, d, t + 0.02f);
+                Vector3 cur = Bezier3DCurve.GetPoint(a, b, c, d, t + 0.02f);
                 Gizmos.DrawLine(prev, cur);
                 prev = cur;
             }

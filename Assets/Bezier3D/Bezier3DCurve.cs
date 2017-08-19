@@ -45,11 +45,15 @@ public struct Bezier3DCurve {
 
     #region Public methods
     public Vector3 GetPointTime(float t) {
-		return GetPointTime(_a, _B, _C, _d, t);
+		return GetPoint(_a, _B, _C, _d, t);
 	}
 
     public Vector3 GetPointDistance(float distance) {
-        return GetPointTime(_a, _B, _C, _d, Dist2Time(distance));
+        return GetPoint(_a, _B, _C, _d, Dist2Time(distance));
+    }
+
+    public Vector3 GetForwardDistance(float distance) {
+        return GetFirstDerivative(_a, _B, _C, _d, Dist2Time(distance));
     }
 
     public float Dist2Time(float distance) {
@@ -66,11 +70,11 @@ public struct Bezier3DCurve {
             //Normalize i
             float t = (float)i / (float)steps;
             //Get position from t
-            Vector3 newPos = GetPointTime(p0, p1, p2, p3, t);
+            Vector3 newPos = GetPoint(p0, p1, p2, p3, t);
             //First step
             if (i == 0) {
                 //Add point at (0,0)
-                prevPos = GetPointTime(p0, p1, p2, p3, 0);
+                prevPos = GetPoint(p0, p1, p2, p3, 0);
                 curve.AddKey(0, 0);
             }
             //Per step
@@ -88,7 +92,7 @@ public struct Bezier3DCurve {
         return curve;
     }
 
-    public static Vector3 GetPointTime(Vector3 a, Vector3 b, Vector3 c, Vector3 d, float t) {
+    public static Vector3 GetPoint(Vector3 a, Vector3 b, Vector3 c, Vector3 d, float t) {
 		t = Mathf.Clamp01(t);
 		float oneMinusT = 1f - t;
 		return
