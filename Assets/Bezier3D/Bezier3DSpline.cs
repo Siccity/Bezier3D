@@ -20,9 +20,9 @@ public class Bezier3DSpline : MonoBehaviour{
     [SerializeField] protected float _totalLength = 2.370671f;
     /// <summary> Curves of the spline </summary>
     [SerializeField] protected List<Bezier3DCurve> curves = new List<Bezier3DCurve>() { new Bezier3DCurve( new Vector3(-1,0,0), new Vector3(1,0,1), new Vector3(-1,0,-1), new Vector3(1,0,0), 60)};
-    /// <summary> Automatic knots don't have handles. Instead they have a percentage and adjust their handles accordingly </summary>
+    /// <summary> Automatic knots don't have handles. Instead they have a percentage and adjust their handles accordingly. A percentage of 0 indicates that this is not automatic </summary>
     [SerializeField] protected List<float> autoKnot = new List<float>() { 0, 0 };
-    [SerializeField] protected List<Quaternion?> orientations = new List<Quaternion?>() { null, null };
+    [SerializeField] protected List<NullableQuaternion> orientations = new List<NullableQuaternion>() { new NullableQuaternion(null), new NullableQuaternion(null) };
 
     #region Public methods
     /// <summary> Setting spline to closed will generate an extra curve, connecting end point to start point </summary>
@@ -107,9 +107,16 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 
     public float DistanceToTime(float dist) {
+        float t = 0f;
         for (int i = 0; i < CurveCount; i++) {
-            if (curves[i].length < dist) dist -= curves[i].length;
-            else return curves[i].Dist2Time(dist);
+            if (curves[i].length < dist) {
+                dist -= curves[i].length;
+                t += 1f / CurveCount;
+            }
+            else {
+                t += curves[i].Dist2Time(dist) / CurveCount;
+                return t;
+            }
         }
         return 1f;
     }
@@ -196,14 +203,14 @@ public class Bezier3DSpline : MonoBehaviour{
     /// <summary> Return Knot info in local coordinates </summary>
     public Knot GetKnot(int i) {
         if (i == 0) {
-            if (closed) return new Knot(curves[0].a, curves[CurveCount-1].c, curves[0].b, autoKnot[i], orientations[i]);
-            else return new Knot(curves[0].a, Vector3.zero, curves[0].b, autoKnot[i], orientations[i]);
+            if (closed) return new Knot(curves[0].a, curves[CurveCount - 1].c, curves[0].b, autoKnot[i], orientations[i].NullableValue);
+            else return new Knot(curves[0].a, Vector3.zero, curves[0].b, autoKnot[i], orientations[i].NullableValue);
         } else if (i == CurveCount) {
-            return new Knot(curves[i - 1].d, curves[i - 1].c, Vector3.zero, autoKnot[i], orientations[i]);
+            return new Knot(curves[i - 1].d, curves[i - 1].c, Vector3.zero, autoKnot[i], orientations[i].NullableValue);
         } else {
-            return new Knot(curves[i].a, curves[i - 1].c, curves[i].b,autoKnot[i], orientations[i]);
+            return new Knot(curves[i].a, curves[i - 1].c, curves[i].b,autoKnot[i], orientations[i].NullableValue);
         }
-    }
+    } 
     #endregion
 
     public struct Knot {
@@ -225,6 +232,8 @@ public class Bezier3DSpline : MonoBehaviour{
             this.auto = automatic;
             this.orientation = orientation;
         }
+        
+        
     }
 
     #region Private methods
@@ -299,6 +308,26 @@ public class Bezier3DSpline : MonoBehaviour{
     }
     #endregion
 
+    /// <summary> Unity doesn't support serialization of nullable types, so here's a custom struct that does exactly the same thing </summary>
+    [Serializable]
+    protected struct NullableQuaternion {
+        public Quaternion Value { get { return rotation; } }
+        public Quaternion? NullableValue { get { if (hasValue) return rotation; else return null; } }
+        public bool HasValue { get { return hasValue; } }
+
+        [SerializeField] private Quaternion rotation;
+        [SerializeField] private bool hasValue;
+
+        public NullableQuaternion(Quaternion? rot) {
+            rotation = rot.HasValue?rot.Value:Quaternion.identity;
+            hasValue = rot.HasValue;
+        }
+
+        //  User-defined conversion from nullable type to NullableQuaternion
+        public static implicit operator NullableQuaternion(Quaternion? r) {
+            return new NullableQuaternion(r);
+        }
+    }
 #if UNITY_EDITOR
     void OnDrawGizmos() {
         if (Array.IndexOf(UnityEditor.Selection.gameObjects, gameObject) >= 0) {
