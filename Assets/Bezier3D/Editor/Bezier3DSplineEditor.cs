@@ -387,7 +387,7 @@ public class Bezier3DSplineEditor : Editor {
     }
 
     private void VisualizeOrientation() {
-        for (float t = 0f; t < spline.totalLength; t += 0.25f) {
+        for (float t = 0f; t < spline.totalLength; t += 0.1f) {
             Vector3 point = spline.GetPointByDistance(t);
             Vector3 up = spline.GetUp(spline.DistanceToTime(t));
             Handles.DrawLine(point, point + up * 0.1f);

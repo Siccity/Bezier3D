@@ -75,23 +75,35 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 
     public Vector3 GetUp(float t) {
+        Vector3 tangent = GetForward(t);
+        t *= CurveCount;
+
         Vector3 up = Vector3.up;
-        bool set = false;
         Quaternion rot_a = Quaternion.identity, rot_b = Quaternion.identity;
-        int t_a, t_b;
-        for (var i = 0; i < orientations.Count; i++) {
+        int t_a = 0, t_b = 0;
+
+        //Find preceding rotation
+        for (int i = (int)t; i >= 0; i--) {
             if (orientations[i].HasValue) {
-                if (!set) {
-                    set = true;
-                    rot_a = orientations[i].Value;
-                    rot_b = orientations[i].Value;
-                    t_a = i;
-                    t_b = i;
-                }
+                rot_a = orientations[i].Value;
+                rot_b = orientations[i].Value;
+                t_a = i;
+                t_b = i;
+                break;
             }
         }
-        Vector3 tangent = GetForward(t);
-        return Vector3.ProjectOnPlane(rot_a * Vector3.up, tangent).normalized;
+        //Find proceding rotation
+        for (int i = (int)t+1; i < orientations.Count; i++) {
+            if (orientations[i].HasValue) {
+                rot_b = orientations[i].Value;
+                t_b = i;
+                break;
+            }
+        }
+        t = Mathf.InverseLerp(t_a, t_b, t);
+        Quaternion rot = Quaternion.Lerp(rot_a, rot_b, t);
+        //Debug.Log(t_a + " / " + t_b + " / " + t);
+        return Vector3.ProjectOnPlane(rot * Vector3.up, tangent).normalized;
     }
 
     public float DistanceToTime(float dist) {

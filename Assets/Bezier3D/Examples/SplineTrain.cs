@@ -15,6 +15,7 @@ public class SplineTrain : MonoBehaviour {
     }
 
     void OnValidate() {
+        if (trainType == TrainType.Clamp) startPos = Mathf.Clamp(startPos, 0, 1);
         SetPos(startPos);
     }
 	void Update () {
@@ -25,13 +26,16 @@ public class SplineTrain : MonoBehaviour {
     void SetPos(float pos) {
         switch (trainType) {
         case TrainType.Clamp:
-            transform.position = spline.GetPointByDistance(pos);
+            transform.position = spline.GetPoint(pos);
+            transform.rotation = Quaternion.LookRotation(spline.GetUp(pos));
             break;
         case TrainType.Loop:
-            transform.position = spline.GetPointByDistance(Mathf.Repeat(pos, spline.totalLength));
+            transform.position = spline.GetPoint(Mathf.Repeat(pos, 1));
+            transform.rotation = Quaternion.LookRotation(spline.GetUp(Mathf.Repeat(pos, 1)));
             break;
-        case TrainType.PingPong:
-            transform.position = spline.GetPointByDistance(Mathf.PingPong(pos, spline.totalLength));
+            case TrainType.PingPong:
+            transform.position = spline.GetPoint(Mathf.PingPong(pos, 1));
+            transform.rotation = Quaternion.LookRotation(spline.GetUp(Mathf.PingPong(pos, 1)));
             break;
         }
     }
