@@ -106,6 +106,12 @@ public class Bezier3DSpline : MonoBehaviour{
         return Vector3.ProjectOnPlane(rot * Vector3.up, tangent).normalized;
     }
 
+    public Quaternion GetOrientation(float t) {
+        Vector3 up = GetUp(t);
+        Vector3 forward = GetForward(t);
+        return Quaternion.LookRotation(forward, up);
+    }
+
     public float DistanceToTime(float dist) {
         float t = 0f;
         for (int i = 0; i < CurveCount; i++) {
