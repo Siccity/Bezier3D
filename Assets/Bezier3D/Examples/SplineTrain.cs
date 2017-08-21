@@ -15,7 +15,7 @@ public class SplineTrain : MonoBehaviour {
     }
 
     void OnValidate() {
-        if (trainType == TrainType.Clamp) startPos = Mathf.Clamp(startPos, 0, 1);
+        if (trainType == TrainType.Clamp) startPos = Mathf.Clamp(startPos, 0, spline.totalLength);
         if (spline != null) SetPos(startPos);
     }
 	void Update () {

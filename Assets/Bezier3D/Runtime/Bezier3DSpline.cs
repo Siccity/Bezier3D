@@ -103,6 +103,7 @@ public class Bezier3DSpline : MonoBehaviour{
         }
         t = Mathf.InverseLerp(t_a, t_b, t);
         Quaternion rot = Quaternion.Lerp(rot_a, rot_b, t);
+        rot = transform.rotation * rot;
         //Debug.Log(t_a + " / " + t_b + " / " + t);
         return Vector3.ProjectOnPlane(rot * Vector3.up, tangent).normalized;
     }
