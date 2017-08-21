@@ -10,7 +10,6 @@ public class Bezier3DSplineEditor : Editor {
     public static bool mirror = true;
     public static float handleSize = 0.1f;
     public static Vector2 guiOffset = new Vector2(10, 10);
-    public static bool visualizeTime;
     public static bool visualizeOrientation = true;
 	int activeKnot = -1;
     List<int> selectedKnots = new List<int>();
@@ -143,18 +142,14 @@ public class Bezier3DSplineEditor : Editor {
         GUI.contentColor = mirror? Color.green:Color.red;
         mirror = GUILayout.Toggle(mirror, new GUIContent("Handle Mirror", "Should opposite handles mirror edited handles?"), style);
         GUILayout.Space(4);
-        GUI.contentColor = visualizeTime? Color.green:Color.red;
-        visualizeTime = GUILayout.Toggle(visualizeTime, new GUIContent("Debug Time", "Visualize time along spline"), style);
-        GUILayout.Space(4);
         GUI.contentColor = visualizeOrientation ? Color.green : Color.red;
-        visualizeOrientation = GUILayout.Toggle(visualizeOrientation, new GUIContent("Debug Orientation", "Visualize orientation along spline"), style);
+        visualizeOrientation = GUILayout.Toggle(visualizeOrientation, new GUIContent("Show Orientation", "Visualize orientation along spline"), style);
         GUILayout.EndArea();
         Handles.EndGUI();
 
         ValidateSelected();
         DrawUnselectedKnots();
 
-        if (visualizeTime) VisualizeTime(10);
         if (visualizeOrientation) VisualizeOrientation();
         if (activeKnot != -1) {
             if (selectedKnots.Count == 1) {
@@ -405,13 +400,6 @@ public class Bezier3DSplineEditor : Editor {
             }
         }
         Repaint();
-    }
-
-    private void VisualizeTime(int steps) {
-        for (float t = 0f; t < 1f; t += 1f / (steps * spline.CurveCount)) {
-            Vector3 point = spline.GetPoint(t);
-            Handles.DrawLine(point, point + Vector3.up * 0.1f);
-        }
     }
 
     private void VisualizeOrientation() {
