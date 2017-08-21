@@ -1,6 +1,6 @@
 ### Bezier3D
 Core bezier implementation for Unity3D.
-Contains basic bezier functionality with distance interpolation.
+Contains basic bezier functionality with distance interpolation and orientation anchors.
 
 **Highlighted Methods**
 * *GetPointDistance(float)* - Given distance, returns a point
