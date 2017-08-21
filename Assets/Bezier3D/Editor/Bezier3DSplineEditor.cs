@@ -15,7 +15,6 @@ public class Bezier3DSplineEditor : Editor {
 	int activeKnot = -1;
     List<int> selectedKnots = new List<int>();
     static Bezier3DSpline spline;
-    public static Texture2D orientationAnchorIcon;
 
     [MenuItem("GameObject/BezierSpline",false,10)]
     static void CreateBezierSpline() {
@@ -23,19 +22,7 @@ public class Bezier3DSplineEditor : Editor {
     }
 
     void OnEnable() {
-        //Code for changing component icon. Not working yet.
-        /*var method = typeof(EditorGUIUtility).GetMethod("SetIconForObject", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-        if (method != null) {
-            method.Invoke(null, new System.Object[] { AssetDatabase.LoadAssetAtPath<MonoScript>("Assets/Plugins/Circuit/DocumentComponentBehaviour.cs"), Resources.Load<Texture2D>("icon") });
-            method.Invoke(null, new System.Object[] { AssetDatabase.LoadAssetAtPath<MonoScript>("Assets/Plugins/Circuit/DocumentComponentStateMachine.cs"), Resources.Load<Texture2D>("icon") });
-        }*/
         spline = target as Bezier3DSpline;
-
-
-
-        if (orientationAnchorIcon == null) {
-            orientationAnchorIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Bezier3D/Editor/Icons/orientationAnchor.png");
-        }
     }
 
     void OnDisable() {
@@ -70,20 +57,19 @@ public class Bezier3DSplineEditor : Editor {
 
         EditorGUILayout.Space();
         if (activeKnot != -1) {
-            EditorGUILayout.LabelField("Selected point ("+activeKnot+")");
+            EditorGUILayout.LabelField("Selected point");
             EditorGUI.indentLevel = 1;
             Bezier3DSpline.Knot knot = spline.GetKnot(activeKnot);
 
+            Rect position = EditorGUILayout.GetControlRect(false, 19f, EditorStyles.numberField);
+            position.xMin += EditorGUIUtility.labelWidth;
+
             EditorGUI.BeginChangeCheck();
             bool orientation = knot.orientation != null;
-
-            GUIStyle buttonStyle = new GUIStyle("Button") {
-                padding = new RectOffset(0, 0, 0, 0),
-                margin = new RectOffset(0, 0, 0, 0)
-            };
-            orientation = GUILayout.Toggle(orientation, new GUIContent(orientationAnchorIcon), buttonStyle, GUILayout.MaxHeight(22), GUILayout.MaxWidth(22));
-            orientation = EditorGUILayout.Toggle("Orientation", orientation);
+            Rect orientationRect = new Rect(position.x, position.y, position.height, position.height);
+            orientation = GUI.Toggle(orientationRect, orientation, new GUIContent("O", "Orientation Anchor"), "Button");
             if (EditorGUI.EndChangeCheck()) {
+                Undo.RecordObject(spline, "Toggle Bezier Orientation Anchor");
                 if (orientation) knot.orientation = Quaternion.identity;
                 else knot.orientation = null;
                 spline.SetKnot(activeKnot, knot);
@@ -92,15 +78,31 @@ public class Bezier3DSplineEditor : Editor {
 
             EditorGUI.BeginChangeCheck();
             bool auto = knot.auto != 0f;
-            auto = EditorGUILayout.Toggle("Auto", auto);
+            Rect autoRect = new Rect(position.x + position.height + 4, position.y, position.height, position.height);
+            auto = GUI.Toggle(autoRect, auto, new GUIContent("A", "Auto Handles"), "Button");
             if (EditorGUI.EndChangeCheck()) {
+                Undo.RecordObject(spline, "Toggle Bezier Auto Handles");
                 if (auto) knot.auto = 0.5f;
                 else knot.auto = 0f;
                 spline.SetKnot(activeKnot, knot);
                 SceneView.RepaintAll();
             }
 
+
+            if (orientation) {
+                EditorGUILayout.Space();
+                EditorGUI.BeginChangeCheck();
+                Vector3 orientationEuler = knot.orientation.Value.eulerAngles;
+                orientationEuler = EditorGUILayout.Vector3Field("Orientation", orientationEuler);
+                if (EditorGUI.EndChangeCheck()) {
+                    knot.orientation = Quaternion.Euler(orientationEuler);
+                    spline.SetKnot(activeKnot, knot);
+                    SceneView.RepaintAll();
+                }
+            }
+
             if (auto) {
+                EditorGUILayout.Space();
                 EditorGUI.BeginChangeCheck();
                 knot.auto = EditorGUILayout.FloatField("Distance", knot.auto);
                 if (EditorGUI.EndChangeCheck()) {
@@ -108,6 +110,7 @@ public class Bezier3DSplineEditor : Editor {
                     SceneView.RepaintAll();
                 }
             } else {
+                EditorGUILayout.Space();
                 EditorGUI.BeginChangeCheck();
                 knot.position = EditorGUILayout.Vector3Field("Position", knot.position);
                 if (EditorGUI.EndChangeCheck()) {
@@ -183,13 +186,19 @@ public class Bezier3DSplineEditor : Editor {
 
         Handles.PositionHandle(handlePos, Tools.handleRotation);
     }
+
     void DrawUnselectedKnots() {
-        Handles.color = Color.white;
         for (int i = 0; i < spline.KnotCount; i++) {
             if (selectedKnots.Contains(i)) continue;
             Bezier3DSpline.Knot knot = spline.GetKnot(i);
 
             Vector3 knotWorldPos = spline.transform.TransformPoint(knot.position);
+            if (knot.orientation.HasValue) {
+                Handles.color = Handles.yAxisColor;
+                Quaternion rot = spline.transform.rotation * knot.orientation.Value;
+                Handles.ArrowHandleCap(0, knotWorldPos, rot * Quaternion.AngleAxis(90, Vector3.left), 0.15f, EventType.repaint);
+            }
+            Handles.color = Color.white;
             if (Handles.Button(knotWorldPos, Camera.current.transform.rotation, handleSize, handleSize, Handles.CircleHandleCap)) {
                 SelectKnot(i, Event.current.control);
             }
@@ -213,9 +222,13 @@ public class Bezier3DSplineEditor : Editor {
             }
         }
         else if (Tools.current == Tool.Rotate) {
+            //Draw arrow
+
             //Rotation handle
             EditorGUI.BeginChangeCheck();
             Quaternion rot = knot.orientation.HasValue ? knot.orientation.Value : Quaternion.identity;
+            Handles.color = Handles.yAxisColor;
+            Handles.ArrowHandleCap(0, knotWorldPos, rot * Quaternion.AngleAxis(90,Vector3.left) , HandleUtility.GetHandleSize(knotWorldPos), EventType.repaint);
             rot = Handles.RotationHandle(rot, knotWorldPos);
             if (EditorGUI.EndChangeCheck()) {
                 Undo.RecordObject(spline, "Edit Bezier Point");
@@ -225,6 +238,8 @@ public class Bezier3DSplineEditor : Editor {
             }
         }
 
+
+        Handles.color = Handles.zAxisColor;
 
         //In Handle
         if (knot.handleIn != Vector3.zero) {
@@ -278,7 +293,7 @@ public class Bezier3DSplineEditor : Editor {
 
 
     void DrawSelectedSplitters() {
-        Handles.color = Color.blue;
+        Handles.color = Color.white;
         //Start add
         if (!spline.closed && activeKnot == 0) {
             Bezier3DCurve curve = spline.GetCurve(0);
@@ -286,7 +301,7 @@ public class Bezier3DSplineEditor : Editor {
                 a = spline.transform.TransformPoint(curve.a),
                 b = spline.transform.TransformDirection(curve.b.normalized);
             Handles.DrawDottedLine(a, a-b,3f);
-            if (Handles.Button(a - b, Camera.current.transform.rotation, handleSize, handleSize, Handles.CircleHandleCap)) {
+            if (Handles.Button(a - b, Camera.current.transform.rotation, handleSize * 0.15f, handleSize * 0.15f, Handles.DotHandleCap)) {
                 Undo.RecordObject(spline, "Add Bezier Point");
                 spline.InsertKnot(0, new Bezier3DSpline.Knot(curve.a - curve.b.normalized, Vector3.zero, curve.b.normalized * 0.5f));
             }
@@ -299,7 +314,7 @@ public class Bezier3DSplineEditor : Editor {
                 c = spline.transform.TransformDirection(curve.c.normalized),
                 d = spline.transform.TransformPoint(curve.d);
             Handles.DrawDottedLine(d, d - c, 3f);
-            if (Handles.Button(d - c, Camera.current.transform.rotation, handleSize, handleSize, Handles.CircleHandleCap)) {
+            if (Handles.Button(d - c, Camera.current.transform.rotation, handleSize*0.15f, handleSize * 0.15f, Handles.DotHandleCap)) {
                 Undo.RecordObject(spline, "Add Bezier Point");
                 spline.AddKnot(new Bezier3DSpline.Knot(curve.d - curve.c.normalized, curve.c.normalized * 0.5f, Vector3.zero));
                 SelectKnot(spline.CurveCount, false);
@@ -317,7 +332,7 @@ public class Bezier3DSplineEditor : Editor {
             Vector3 b = curve.c + curve.d;
             Vector3 ab = (b - a) * 0.3f;
 
-            if (Handles.Button(center, Camera.current.transform.rotation, handleSize, handleSize, Handles.CircleHandleCap)) {
+            if (Handles.Button(center, Camera.current.transform.rotation, handleSize*0.15f, handleSize * 0.15f, Handles.DotHandleCap)) {
                 Undo.RecordObject(spline, "Add Bezier Point");
                 spline.InsertKnot(activeKnot == 0 ? spline.CurveCount : activeKnot, new Bezier3DSpline.Knot(centerLocal, -ab, ab));
                 if (activeKnot == 0) SelectKnot(spline.CurveCount-1,false);
@@ -334,7 +349,7 @@ public class Bezier3DSplineEditor : Editor {
             Vector3 b = curve.c + curve.d;
             Vector3 ab = (b - a) * 0.3f;
 
-            if (Handles.Button(center, Camera.current.transform.rotation, handleSize, handleSize, Handles.CircleHandleCap)) {
+            if (Handles.Button(center, Camera.current.transform.rotation, handleSize * 0.15f, handleSize * 0.15f, Handles.DotHandleCap)) {
                 Undo.RecordObject(spline, "Add Bezier Point");
                 spline.InsertKnot(activeKnot+1, new Bezier3DSpline.Knot(centerLocal, -ab, ab));
                 SelectKnot(activeKnot + 1, false);

@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using UnityEngine.Serialization;
-public class Bezier3DSpline : MonoBehaviour{
 
+[AddComponentMenu("Miscellaneous/Bezier Spline")]
+public class Bezier3DSpline : MonoBehaviour{
     /// <summary> Callback for when the spline changes </summary>
     public Action onChanged;
 	public int KnotCount { get { return curves.Count+(closed?0:1); } }

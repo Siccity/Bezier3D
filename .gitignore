@@ -8,3 +8,5 @@ Temp/
 *.sln
 
 *.csproj
+
+Bezier3D\.userprefs
