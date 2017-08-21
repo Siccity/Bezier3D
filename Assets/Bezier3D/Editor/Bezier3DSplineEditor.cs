@@ -15,6 +15,7 @@ public class Bezier3DSplineEditor : Editor {
 	int activeKnot = -1;
     List<int> selectedKnots = new List<int>();
     static Bezier3DSpline spline;
+    public static Texture2D orientationAnchorIcon;
 
     [MenuItem("GameObject/BezierSpline",false,10)]
     static void CreateBezierSpline() {
@@ -29,6 +30,12 @@ public class Bezier3DSplineEditor : Editor {
             method.Invoke(null, new System.Object[] { AssetDatabase.LoadAssetAtPath<MonoScript>("Assets/Plugins/Circuit/DocumentComponentStateMachine.cs"), Resources.Load<Texture2D>("icon") });
         }*/
         spline = target as Bezier3DSpline;
+
+
+
+        if (orientationAnchorIcon == null) {
+            orientationAnchorIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Bezier3D/Editor/Icons/orientationAnchor.png");
+        }
     }
 
     void OnDisable() {
@@ -69,6 +76,12 @@ public class Bezier3DSplineEditor : Editor {
 
             EditorGUI.BeginChangeCheck();
             bool orientation = knot.orientation != null;
+
+            GUIStyle buttonStyle = new GUIStyle("Button") {
+                padding = new RectOffset(0, 0, 0, 0),
+                margin = new RectOffset(0, 0, 0, 0)
+            };
+            orientation = GUILayout.Toggle(orientation, new GUIContent(orientationAnchorIcon), buttonStyle, GUILayout.MaxHeight(22), GUILayout.MaxWidth(22));
             orientation = EditorGUILayout.Toggle("Orientation", orientation);
             if (EditorGUI.EndChangeCheck()) {
                 if (orientation) knot.orientation = Quaternion.identity;
@@ -119,7 +132,7 @@ public class Bezier3DSplineEditor : Editor {
         }
 	}
 
-	void OnSceneGUI() {
+    void OnSceneGUI() {
         Handles.BeginGUI();
         Color defaultColor = GUI.contentColor;
         GUILayout.BeginArea(new Rect(guiOffset, new Vector2(100, 200)));
