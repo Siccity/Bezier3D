@@ -50,9 +50,10 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 
     /// <summary> Return point at lerped position where 0 = start, 1 = end </summary>
-	public Vector3 GetPoint(float t) {
+	public Vector3 GetPoint(float t, bool world = true) {
         Bezier3DCurve curve = GetCurve(t, out t);
-        return transform.TransformPoint(curve.GetPoint(t));
+        if (world) return transform.TransformPoint(curve.GetPoint(t));
+        else return curve.GetPoint(t);
     }
 
     /// <summary> Return point in at set distance along spline </summary>
@@ -63,15 +64,16 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 
     /// <summary> Return forward vector at lerped position where 0 = start, 1 = end </summary>
-	public Vector3 GetForward(float t) {
+	public Vector3 GetForward(float t, bool world = true) {
         Bezier3DCurve curve = GetCurve(t, out t);
-        return transform.TransformPoint(curve.GetForward(t));
+        if (world) return transform.TransformDirection(curve.GetForward(t));
+        return curve.GetForward(t);
     }
 
     /// <summary> Return forward vector at set distance along spline </summary>
     public Vector3 GetForwardByDistance(float dist, bool world = true) {
         Bezier3DCurve curve = GetCurveDistance(dist, out dist);
-        if (world) return transform.TransformPoint(curve.GetForwardDistance(dist));
+        if (world) return transform.TransformDirection(curve.GetForwardDistance(dist));
         return curve.GetForwardDistance(dist);
     }
 

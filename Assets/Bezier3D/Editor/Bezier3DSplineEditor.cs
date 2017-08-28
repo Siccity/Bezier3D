@@ -412,8 +412,13 @@ public class Bezier3DSplineEditor : Editor {
     private void VisualizeOrientation() {
         for (float t = 0f; t < spline.totalLength; t += 1) {
             Vector3 point = spline.GetPointByDistance(t);
-            Vector3 up = spline.GetUp(spline.DistanceToTime(t));
+            Quaternion rot = spline.GetOrientation(spline.DistanceToTime(t));
+            Vector3 up = rot * Vector3.up;
+            Vector3 fwd = rot * Vector3.forward;
+            Handles.color = Color.white;
             Handles.DrawLine(point, point + up);
+            Handles.color = Handles.zAxisColor;
+            Handles.DrawLine(point, point + fwd);
         }
     }
 
