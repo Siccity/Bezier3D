@@ -11,11 +11,11 @@ public class Bezier3DSplineEditor : Editor {
     public static float handleSize = 0.1f;
     public static Vector2 guiOffset = new Vector2(10, 10);
     public static bool visualizeOrientation = true;
-	int activeKnot = -1;
+    int activeKnot = -1;
     List<int> selectedKnots = new List<int>();
     static Bezier3DSpline spline;
 
-    [MenuItem("GameObject/BezierSpline",false,10)]
+    [MenuItem("GameObject/BezierSpline", false, 10)]
     static void CreateBezierSpline() {
         new GameObject("BezierSpline").AddComponent<Bezier3DSpline>();
     }
@@ -30,7 +30,7 @@ public class Bezier3DSplineEditor : Editor {
     }
 
     override public void OnInspectorGUI() {
-		Bezier3DSpline spline = target as Bezier3DSpline;
+        Bezier3DSpline spline = target as Bezier3DSpline;
 
         ValidateSelected();
 
@@ -47,7 +47,7 @@ public class Bezier3DSplineEditor : Editor {
 
         EditorGUI.BeginChangeCheck();
         bool closed = spline.closed;
-        closed = EditorGUILayout.Toggle(new GUIContent("Closed", "Generate an extra curve, connecting the final point to the first point."),closed);
+        closed = EditorGUILayout.Toggle(new GUIContent("Closed", "Generate an extra curve, connecting the final point to the first point."), closed);
         if (EditorGUI.EndChangeCheck()) {
             spline.SetClosed(closed);
             SceneView.RepaintAll();
@@ -132,14 +132,14 @@ public class Bezier3DSplineEditor : Editor {
                 }
             }
         }
-	}
+    }
 
     void OnSceneGUI() {
         Handles.BeginGUI();
         Color defaultColor = GUI.contentColor;
         GUILayout.BeginArea(new Rect(guiOffset, new Vector2(100, 200)));
         GUIStyle style = (GUIStyle)"ChannelStripAttenuationMarkerSquare";
-        GUI.contentColor = mirror? Color.green:Color.red;
+        GUI.contentColor = mirror ? Color.green : Color.red;
         mirror = GUILayout.Toggle(mirror, new GUIContent("Handle Mirror", "Should opposite handles mirror edited handles?"), style);
         GUILayout.Space(4);
         GUI.contentColor = visualizeOrientation ? Color.green : Color.red;
@@ -194,7 +194,7 @@ public class Bezier3DSplineEditor : Editor {
                 Handles.ArrowHandleCap(0, knotWorldPos, rot * Quaternion.AngleAxis(90, Vector3.left), 0.15f, EventType.repaint);
             }
             Handles.color = Color.white;
-            if (Handles.Button(knotWorldPos, Camera.current.transform.rotation, handleSize, handleSize, Handles.CircleHandleCap)) {
+            if (Handles.Button(knotWorldPos, Camera.current.transform.rotation, HandleUtility.GetHandleSize(knotWorldPos) * handleSize, HandleUtility.GetHandleSize(knotWorldPos) * handleSize, Handles.CircleHandleCap)) {
                 SelectKnot(i, Event.current.control);
             }
         }
@@ -223,7 +223,7 @@ public class Bezier3DSplineEditor : Editor {
             EditorGUI.BeginChangeCheck();
             Quaternion rot = knot.orientation.HasValue ? knot.orientation.Value : Quaternion.identity;
             Handles.color = Handles.yAxisColor;
-            Handles.ArrowHandleCap(0, knotWorldPos, rot * Quaternion.AngleAxis(90,Vector3.left) , HandleUtility.GetHandleSize(knotWorldPos), EventType.repaint);
+            Handles.ArrowHandleCap(0, knotWorldPos, rot * Quaternion.AngleAxis(90, Vector3.left), HandleUtility.GetHandleSize(knotWorldPos), EventType.repaint);
             rot = Handles.RotationHandle(rot, knotWorldPos);
             if (EditorGUI.EndChangeCheck()) {
                 Undo.RecordObject(spline, "Edit Bezier Point");
@@ -240,7 +240,8 @@ public class Bezier3DSplineEditor : Editor {
         if (knot.handleIn != Vector3.zero) {
             EditorGUI.BeginChangeCheck();
             Vector3 inHandleWorldPos = spline.transform.TransformPoint(knot.position + knot.handleIn);
-            inHandleWorldPos = Handles.PositionHandle(inHandleWorldPos, Tools.handleRotation);
+            //inHandleWorldPos = Handles.PositionHandle(inHandleWorldPos, Tools.handleRotation);
+            inHandleWorldPos = PositionHandle(inHandleWorldPos, Tools.handleRotation,0.5f);
             if (EditorGUI.EndChangeCheck()) {
                 Undo.RecordObject(spline, "Edit Bezier Handle");
                 knot.handleIn = spline.transform.InverseTransformPoint(inHandleWorldPos) - knot.position;
@@ -255,7 +256,8 @@ public class Bezier3DSplineEditor : Editor {
         if (knot.handleOut != Vector3.zero) {
             EditorGUI.BeginChangeCheck();
             Vector3 outHandleWorldPos = spline.transform.TransformPoint(knot.position + knot.handleOut);
-            outHandleWorldPos = Handles.PositionHandle(outHandleWorldPos, Tools.handleRotation);
+            //outHandleWorldPos = Handles.PositionHandle(outHandleWorldPos, Tools.handleRotation);
+            outHandleWorldPos = PositionHandle(outHandleWorldPos, Tools.handleRotation,0.5f);
             if (EditorGUI.EndChangeCheck()) {
                 Undo.RecordObject(spline, "Edit Bezier Handle");
                 knot.handleOut = spline.transform.InverseTransformPoint(outHandleWorldPos) - knot.position;
@@ -267,25 +269,24 @@ public class Bezier3DSplineEditor : Editor {
 
         // Hotkeys
         Event e = Event.current;
-        switch(e.type) {
-        case EventType.KeyDown:
-            if (e.keyCode == KeyCode.Delete) {
-                if (spline.CurveCount > 1) {
-                    Undo.RecordObject(spline,"Remove Bezier Point");
-                    spline.RemoveKnot(activeKnot);
-                    SelectKnot(-1, false);
+        switch (e.type) {
+            case EventType.KeyDown:
+                if (e.keyCode == KeyCode.Delete) {
+                    if (spline.CurveCount > 1) {
+                        Undo.RecordObject(spline, "Remove Bezier Point");
+                        spline.RemoveKnot(activeKnot);
+                        SelectKnot(-1, false);
+                    }
+                    e.Use();
+
                 }
-                e.Use();
-
-            }
-            if (e.keyCode == KeyCode.Escape) {
-                SelectKnot(-1, false);
-                e.Use();
-            }
-            break;
-        } 
+                if (e.keyCode == KeyCode.Escape) {
+                    SelectKnot(-1, false);
+                    e.Use();
+                }
+                break;
+        }
     }
-
 
     void DrawSelectedSplitters() {
         Handles.color = Color.white;
@@ -294,24 +295,29 @@ public class Bezier3DSplineEditor : Editor {
             Bezier3DCurve curve = spline.GetCurve(0);
             Vector3
                 a = spline.transform.TransformPoint(curve.a),
-                b = spline.transform.TransformDirection(curve.b.normalized);
-            Handles.DrawDottedLine(a, a-b,3f);
-            if (Handles.Button(a - b, Camera.current.transform.rotation, handleSize * 0.15f, handleSize * 0.15f, Handles.DotHandleCap)) {
+                b = spline.transform.TransformDirection(curve.b.normalized) * 2f;
+
+            float handleScale = HandleUtility.GetHandleSize(a);
+            b *= handleScale;
+            Handles.DrawDottedLine(a, a - b, 3f);
+            if (Handles.Button(a - b, Camera.current.transform.rotation, handleScale * handleSize * 0.4f, handleScale * handleSize * 0.4f, Handles.DotHandleCap)) {
                 Undo.RecordObject(spline, "Add Bezier Point");
-                spline.InsertKnot(0, new Bezier3DSpline.Knot(curve.a - curve.b.normalized, Vector3.zero, curve.b.normalized * 0.5f));
+                spline.InsertKnot(0, new Bezier3DSpline.Knot(curve.a - (curve.b.normalized * handleScale * 2), Vector3.zero, curve.b.normalized * 0.5f));
             }
         }
 
         //End add
         if (!spline.closed && activeKnot == spline.CurveCount) {
-            Bezier3DCurve curve = spline.GetCurve(spline.CurveCount-1);
+            Bezier3DCurve curve = spline.GetCurve(spline.CurveCount - 1);
             Vector3
-                c = spline.transform.TransformDirection(curve.c.normalized),
+                c = spline.transform.TransformDirection(curve.c.normalized) * 2f,
                 d = spline.transform.TransformPoint(curve.d);
+            float handleScale = HandleUtility.GetHandleSize(d);
+            c *= handleScale;
             Handles.DrawDottedLine(d, d - c, 3f);
-            if (Handles.Button(d - c, Camera.current.transform.rotation, handleSize*0.15f, handleSize * 0.15f, Handles.DotHandleCap)) {
+            if (Handles.Button(d - c, Camera.current.transform.rotation, handleScale * handleSize * 0.4f, handleScale * handleSize * 0.4f, Handles.DotHandleCap)) {
                 Undo.RecordObject(spline, "Add Bezier Point");
-                spline.AddKnot(new Bezier3DSpline.Knot(curve.d - curve.c.normalized, curve.c.normalized * 0.5f, Vector3.zero));
+                spline.AddKnot(new Bezier3DSpline.Knot(curve.d - (curve.c.normalized * handleScale * 2), curve.c.normalized * 0.5f, Vector3.zero));
                 SelectKnot(spline.CurveCount, false);
             }
         }
@@ -319,18 +325,19 @@ public class Bezier3DSplineEditor : Editor {
         // Prev split
         if (spline.closed || activeKnot != 0) {
 
-            Bezier3DCurve curve = spline.GetCurve(activeKnot == 0 ? spline.CurveCount-1 : activeKnot-1);
+            Bezier3DCurve curve = spline.GetCurve(activeKnot == 0 ? spline.CurveCount - 1 : activeKnot - 1);
             Vector3 centerLocal = curve.GetPointDistance(curve.length * 0.5f);
             Vector3 center = spline.transform.TransformPoint(centerLocal);
 
             Vector3 a = curve.a + curve.b;
             Vector3 b = curve.c + curve.d;
             Vector3 ab = (b - a) * 0.3f;
+            float handleScale = HandleUtility.GetHandleSize(center);
 
-            if (Handles.Button(center, Camera.current.transform.rotation, handleSize*0.15f, handleSize * 0.15f, Handles.DotHandleCap)) {
+            if (Handles.Button(center, Camera.current.transform.rotation, handleScale * handleSize * 0.4f, handleScale * handleSize * 0.4f, Handles.DotHandleCap)) {
                 Undo.RecordObject(spline, "Add Bezier Point");
                 spline.InsertKnot(activeKnot == 0 ? spline.CurveCount : activeKnot, new Bezier3DSpline.Knot(centerLocal, -ab, ab));
-                if (activeKnot == 0) SelectKnot(spline.CurveCount-1,false);
+                if (activeKnot == 0) SelectKnot(spline.CurveCount - 1, false);
             }
         }
 
@@ -343,10 +350,10 @@ public class Bezier3DSplineEditor : Editor {
             Vector3 a = curve.a + curve.b;
             Vector3 b = curve.c + curve.d;
             Vector3 ab = (b - a) * 0.3f;
-
-            if (Handles.Button(center, Camera.current.transform.rotation, handleSize * 0.15f, handleSize * 0.15f, Handles.DotHandleCap)) {
+            float handleScale = HandleUtility.GetHandleSize(center);
+            if (Handles.Button(center, Camera.current.transform.rotation, handleScale * handleSize * 0.4f, handleScale * handleSize * 0.4f, Handles.DotHandleCap)) {
                 Undo.RecordObject(spline, "Add Bezier Point");
-                spline.InsertKnot(activeKnot+1, new Bezier3DSpline.Knot(centerLocal, -ab, ab));
+                spline.InsertKnot(activeKnot + 1, new Bezier3DSpline.Knot(centerLocal, -ab, ab));
                 SelectKnot(activeKnot + 1, false);
             }
         }
@@ -378,7 +385,7 @@ public class Bezier3DSplineEditor : Editor {
             selectedKnots = new List<int>() { };
             Tools.hidden = false;
         }
-        else { 
+        else {
             Tools.hidden = true;
             if (add) {
                 if (selectedKnots.Contains(i)) {
@@ -403,16 +410,126 @@ public class Bezier3DSplineEditor : Editor {
     }
 
     private void VisualizeOrientation() {
-        int steps = 30;
-        /*for (float t = 0f; t < 1f; t += 1f / (steps * spline.CurveCount)) {
-            Vector3 point = spline.GetPoint(t);
-            Vector3 up = spline.GetUp(t);
-            Handles.DrawLine(point, point + up * 0.1f);
-        }*/
-        for (float t = 0f; t < spline.totalLength; t += 0.1f) {
+        for (float t = 0f; t < spline.totalLength; t += 1) {
             Vector3 point = spline.GetPointByDistance(t);
             Vector3 up = spline.GetUp(spline.DistanceToTime(t));
-            Handles.DrawLine(point, point + up * 0.1f);
+            Handles.DrawLine(point, point + up);
         }
     }
+
+    private Vector3 PositionHandle(Vector3 position, Quaternion rotation, float size) {
+        float handleSize = HandleUtility.GetHandleSize(position) * size;
+        Color color = Handles.color;
+
+        //X axis
+        Handles.color = Handles.xAxisColor;
+        GUI.SetNextControlName("xAxis");
+        position = Handles.Slider(position, rotation * Vector3.right, handleSize, Handles.ArrowHandleCap, EditorPrefs.GetFloat("MoveSnapX"));
+
+        //Y axis
+        Handles.color = Handles.yAxisColor;
+        GUI.SetNextControlName("yAxis");
+        position = Handles.Slider(position, rotation * Vector3.up, handleSize, Handles.ArrowHandleCap, EditorPrefs.GetFloat("MoveSnapY"));
+
+        //Z axis
+        Handles.color = Handles.zAxisColor;
+        GUI.SetNextControlName("zAxis");
+        position = Handles.Slider(position, rotation * Vector3.forward, handleSize, Handles.ArrowHandleCap, EditorPrefs.GetFloat("MoveSnapZ"));
+        //Handles.Slider2D()
+        /*
+        if (Handles.free) {
+            Handles.color = Handles.centerColor;
+            GUI.SetNextControlName("FreeMoveAxis");
+            Vector3 arg_1CF_0 = position;
+            float arg_1CF_2 = handleSize * 0.15f;
+            Vector3 arg_1CF_3 = SnapSettings.move;
+            if (Handles.<> f__mg$cache5 == null)
+				{
+                Handles.<> f__mg$cache5 = new Handles.CapFunction(Handles.RectangleHandleCap);
+            }
+            position = Handles.FreeMoveHandle(arg_1CF_0, rotation, arg_1CF_2, arg_1CF_3, Handles.<> f__mg$cache5);
+        }*/
+        position = DoPlanarHandle(PlaneHandle.xyPlane, position, rotation, HandleUtility.GetHandleSize(position) * 0.2f);
+        position = DoPlanarHandle(PlaneHandle.xzPlane, position, rotation, HandleUtility.GetHandleSize(position) * 0.2f);
+        position = DoPlanarHandle(PlaneHandle.yzPlane, position, rotation, HandleUtility.GetHandleSize(position) * 0.2f);
+
+        Handles.color = color;
+        return position;
+    }
+
+    private enum PlaneHandle {
+        xzPlane,
+        xyPlane,
+        yzPlane
+    }
+
+    private static Vector3 DoPlanarHandle(PlaneHandle planeID, Vector3 handlePos, Quaternion rotation, float handleSize) {
+        int num = 0;
+        int num2 = 0;
+        switch (planeID) {
+            case PlaneHandle.xyPlane:
+                Handles.color = Handles.zAxisColor;
+                num = 0;
+                num2 = 1;
+                break;
+            case PlaneHandle.xzPlane:
+                Handles.color = Handles.yAxisColor;
+                num = 0;
+                num2 = 2;
+                break;
+            case PlaneHandle.yzPlane:
+                Handles.color = Handles.xAxisColor;
+                num = 1;
+                num2 = 2;
+                break;
+        }
+        int index = 3 - num2 - num;
+        Color color = Handles.color;
+
+        Matrix4x4 matrix4x = Matrix4x4.TRS(handlePos, rotation, Vector3.one);
+        Vector3 normalized;
+        if (Camera.current.orthographic) {
+            normalized = matrix4x.inverse.MultiplyVector(SceneView.currentDrawingSceneView.rotation * -Vector3.forward).normalized;
+        }
+        else {
+            normalized = matrix4x.inverse.MultiplyPoint(SceneView.currentDrawingSceneView.camera.transform.position).normalized;
+        }
+
+        Vector3 result = handlePos;
+        if (Mathf.Abs(normalized[index]) < 0.05f) {
+            Handles.color = color;
+            result = handlePos;
+        }
+        else {
+            int id = GUIUtility.GetControlID(planeID.GetHashCode(), FocusType.Passive);
+            Vector3 offset = Vector3.one;
+            offset[num] = (normalized[num] >= -0.01f) ? 1 : -1;
+            offset[num2] = (normalized[num2] >= -0.01f) ? 1 : -1;
+            offset[index] = 0f;
+            offset = rotation * (offset * handleSize * 0.5f);
+            Vector3 slideDir1 = Vector3.zero;
+            Vector3 slideDir2 = Vector3.zero;
+            Vector3 handleDir = Vector3.zero;
+            slideDir1[num] = 1f;
+            slideDir2[num2] = 1f;
+            handleDir[index] = 1f;
+            slideDir1 = rotation * slideDir1;
+            slideDir2 = rotation * slideDir2;
+            handleDir = rotation * handleDir;
+            Vector3[] verts = new Vector3[4] {
+                handlePos + offset + (slideDir1 + slideDir2) * handleSize * 0.5f,
+                handlePos + offset + (-slideDir1 + slideDir2) * handleSize * 0.5f,
+                handlePos + offset + (-slideDir1 - slideDir2) * handleSize * 0.5f,
+                handlePos + offset + (slideDir1 - slideDir2) * handleSize * 0.5f
+            };
+            Vector3 snapSettings = new Vector3(EditorPrefs.GetFloat("MoveSnapX"), EditorPrefs.GetFloat("MoveSnapY"), EditorPrefs.GetFloat("MoveSnapZ"));
+            Handles.DrawSolidRectangleWithOutline(verts, new Color(Handles.color.r, Handles.color.g, Handles.color.b, 0.1f), new Color(0f, 0f, 0f, 0f));
+            handlePos = Handles.Slider2D(id, handlePos, offset, handleDir, slideDir1, slideDir2, handleSize * 0.5f, Handles.RectangleHandleCap, new Vector2(snapSettings[num], snapSettings[num2]));
+            Handles.color = color;
+            result = handlePos;
+        }
+        return result;
+    }
+
+
 }
