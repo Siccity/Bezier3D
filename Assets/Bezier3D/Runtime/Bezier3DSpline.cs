@@ -86,7 +86,7 @@ public class Bezier3DSpline : MonoBehaviour{
         int t_a = 0, t_b = 0;
 
         //Find preceding rotation
-        for (int i = (int)t; i >= 0; i--) {
+        for (int i = Mathf.Min((int)t,CurveCount); i >= 0; i--) {
             if (orientations[i].HasValue) {
                 rot_a = orientations[i].Value;
                 rot_b = orientations[i].Value;
@@ -96,7 +96,7 @@ public class Bezier3DSpline : MonoBehaviour{
             }
         }
         //Find proceding rotation
-        for (int i = (int)t+1; i < orientations.Count; i++) {
+        for (int i = Mathf.Max((int)t+1,0); i < orientations.Count; i++) {
             if (orientations[i].HasValue) {
                 rot_b = orientations[i].Value;
                 t_b = i;
@@ -144,9 +144,15 @@ public class Bezier3DSpline : MonoBehaviour{
     public void RemoveKnot(int i) {
         if (i == 0) {
             curves.RemoveAt(0);
-        } else if (i == CurveCount) {
+            autoKnot.RemoveAt(0);
+            orientations.RemoveAt(0);
+        }
+        else if (i == CurveCount) {
             curves.RemoveAt(i - 1);
-        } else {
+            autoKnot.RemoveAt(i - 1);
+            orientations.RemoveAt(i-1);
+        }
+        else {
             Bezier3DCurve curve = curves[i];
             curves.RemoveAt(i);
             autoKnot.RemoveAt(i);
@@ -252,7 +258,7 @@ public class Bezier3DSpline : MonoBehaviour{
 
     #region Private methods
     private Bezier3DCurve GetCurve(float splineT, out float curveT) {
-        splineT = Mathf.Repeat(splineT, 1f) * CurveCount;
+        splineT *= CurveCount;
         for (int i = 0; i < CurveCount; i++) {
             if (splineT > 1f) splineT -= 1f;
             else {

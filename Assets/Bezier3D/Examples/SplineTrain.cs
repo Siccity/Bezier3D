@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class SplineTrain : MonoBehaviour {
 
+    public bool distance = true;
     public enum TrainType { Clamp, Loop, PingPong }
     public Bezier3DSpline spline;
     public TrainType trainType;
@@ -15,7 +16,7 @@ public class SplineTrain : MonoBehaviour {
     }
 
     void OnValidate() {
-        if (trainType == TrainType.Clamp) startPos = Mathf.Clamp(startPos, 0, spline.totalLength);
+        //if (trainType == TrainType.Clamp) startPos = Mathf.Clamp(startPos, 0, spline.totalLength);
         if (spline != null) SetPos(startPos);
     }
 	void Update () {
@@ -25,18 +26,22 @@ public class SplineTrain : MonoBehaviour {
 
     void SetPos(float pos) {
         switch (trainType) {
-        case TrainType.Clamp:
-            transform.position = spline.GetPointByDistance(pos);
-            //transform.rotation = Quaternion.LookRotation(spline.GetUp(pos));
-            break;
-        case TrainType.Loop:
-            transform.position = spline.GetPointByDistance(Mathf.Repeat(pos, spline.totalLength));
-            //transform.rotation = Quaternion.LookRotation(spline.GetUp(Mathf.Repeat(pos, 1)));
-            break;
+            case TrainType.Clamp:
+                break;
+            case TrainType.Loop:
+                pos = Mathf.Repeat(pos, distance ? spline.totalLength : 1);
+                break;
             case TrainType.PingPong:
-            transform.position = spline.GetPointByDistance(Mathf.PingPong(pos, spline.totalLength));
-            //transform.rotation = Quaternion.LookRotation(spline.GetUp(Mathf.PingPong(pos, 1)));
+                pos = Mathf.PingPong(pos, distance ? spline.totalLength : 1);
             break;
+        }
+        if (distance) {
+            transform.position = spline.GetPointByDistance(pos);
+            transform.rotation = spline.GetOrientationDistance(pos);
+        }
+        else {
+            transform.position = spline.GetPoint(pos);
+            transform.rotation = spline.GetOrientation(pos);
         }
     }
 }
