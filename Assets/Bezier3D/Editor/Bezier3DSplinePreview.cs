@@ -10,10 +10,10 @@ public class Bezier3DSplinePreview : ObjectPreview {
 
         public Styles() {
             Color textColor = new Color(0.7f, 0.7f, 0.7f);
-            this.labelStyle.padding.right += 4;
-            this.labelStyle.normal.textColor = textColor;
-            this.headerStyle.padding.right += 4;
-            this.headerStyle.normal.textColor = textColor;
+            labelStyle.padding.right += 4;
+            labelStyle.normal.textColor = textColor;
+            headerStyle.padding.right += 4;
+            headerStyle.normal.textColor = textColor;
         }
     }
 

@@ -81,7 +81,7 @@ public class Bezier3DSplineEditor : Editor {
             auto = GUI.Toggle(autoRect, auto, new GUIContent("A", "Auto Handles"), "Button");
             if (EditorGUI.EndChangeCheck()) {
                 Undo.RecordObject(spline, "Toggle Bezier Auto Handles");
-                if (auto) knot.auto = 0.5f;
+                if (auto) knot.auto = 0.33f;
                 else knot.auto = 0f;
                 spline.SetKnot(activeKnot, knot);
                 SceneView.RepaintAll();

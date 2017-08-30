@@ -143,79 +143,114 @@ public class Bezier3DSpline : MonoBehaviour{
 
     public void RemoveKnot(int i) {
         if (i == 0) {
+            //FIXME
+            if (closed) {
+                Debug.LogWarning("RemoveKnot(0) broken while cyclic is enabled. Toggle off cyclic, remove the point and toggle cyclic back on");
+                return;
+            }
             curves.RemoveAt(0);
             autoKnot.RemoveAt(0);
             orientations.RemoveAt(0);
+
+            if (autoKnot[0] != 0) SetKnot(0, GetKnot(0));
         }
         else if (i == CurveCount) {
             curves.RemoveAt(i - 1);
-            autoKnot.RemoveAt(i - 1);
-            orientations.RemoveAt(i-1);
-        }
-        else {
-            Bezier3DCurve curve = curves[i];
-            curves.RemoveAt(i);
             autoKnot.RemoveAt(i);
             orientations.RemoveAt(i);
-            curves[i - 1] = new Bezier3DCurve(curves[i - 1].a, curves[i - 1].b, curve.c, curve.d,cacheDensity);
+
+            if (autoKnot[KnotCount-1] != 0) SetKnot(KnotCount-1, GetKnot(KnotCount-1));
         }
-        _totalLength = GetTotalLength();
-        if (onChanged != null) onChanged();
+        else {
+            int preCurveIndex, postCurveIndex;
+            GetCurveIndicesForKnot(i, out preCurveIndex, out postCurveIndex);
+
+            Bezier3DCurve curve = new Bezier3DCurve(curves[preCurveIndex].a, curves[preCurveIndex].b, curves[postCurveIndex].c, curves[postCurveIndex].d, cacheDensity);
+
+            curves[preCurveIndex] = curve;
+            curves.RemoveAt(postCurveIndex);
+            autoKnot.RemoveAt(i);
+            orientations.RemoveAt(i);
+
+            int preKnotIndex, postKnotIndex;
+            GetKnotIndicesForKnot(i - 1, out preKnotIndex, out postKnotIndex);
+
+            SetKnot(preKnotIndex, GetKnot(preKnotIndex));
+        }
     }
 
     public void AddKnot(Knot knot) {
-        curves.Add(new Bezier3DCurve(curves[CurveCount-1].d, -curves[CurveCount - 1].c, knot.handleIn, knot.position, cacheDensity));
-        autoKnot.Add(autoKnot[autoKnot.Count-1]);
-        orientations.Add(null);
-        _totalLength = GetTotalLength();
-        if (onChanged != null) onChanged();
+        Bezier3DCurve curve = new Bezier3DCurve(curves[CurveCount-1].d, -curves[CurveCount - 1].c, knot.handleIn, knot.position, cacheDensity);
+
+        curves.Add(curve);
+        autoKnot.Add(knot.auto);
+        orientations.Add(knot.orientation);
+        SetKnot(KnotCount-1, knot);
     }
 
     public void InsertKnot(int i, Knot knot) {
-        if (i == 0) {
-            Bezier3DCurve curve = GetCurve(0);
-            Bezier3DCurve newCurve = new Bezier3DCurve(knot.position, knot.handleOut, -curve.b, curve.a, cacheDensity);
-            curves.Insert(i, newCurve);
-            autoKnot.Insert(i, autoKnot[i]);
-            orientations.Insert(i, null);
-        } else if (i == CurveCount) {
-            curves.Add(new Bezier3DCurve(knot.position, knot.handleOut, curves[i - 1].c, curves[i - 1].d, cacheDensity));
-            curves[i - 1] = new Bezier3DCurve(curves[i - 1].a, curves[i - 1].b, knot.handleIn, knot.position, cacheDensity);
-            autoKnot.Add(autoKnot[autoKnot.Count - 1]);
-            orientations.Add(null);
-        } else {
-            curves.Insert(i, new Bezier3DCurve(knot.position, knot.handleOut, curves[i - 1].c, curves[i - 1].d, cacheDensity));
-            curves[i - 1] = new Bezier3DCurve(curves[i - 1].a, curves[i - 1].b, knot.handleIn, knot.position, cacheDensity);
-            autoKnot.Insert(i, autoKnot[i]);
-            orientations.Insert(i, null);
-        }
-        _totalLength = GetTotalLength();
-        if (onChanged != null) onChanged();
+        Bezier3DCurve curve;
+        if (i == 0) curve = new Bezier3DCurve(knot.position, knot.handleOut, -curves[0].b, curves[0].a, cacheDensity);
+        else if (i == CurveCount) curve = GetCurve(i-1);
+        else curve = GetCurve(i);
+
+        curves.Insert(i, curve);
+        autoKnot.Insert(i, knot.auto);
+        orientations.Insert(i, knot.orientation);
+        SetKnot(i, knot);
     }
 
     /// <summary> Set Knot info in local coordinates </summary>
     public void SetKnot(int i, Knot knot) {
-        if (i == 0) {
-            if (closed) curves[CurveCount-1] = new Bezier3DCurve(curves[CurveCount-1].a, curves[CurveCount - 1].b, knot.handleIn, knot.position, cacheDensity);
-            curves[0] = new Bezier3DCurve(knot.position, knot.handleOut, curves[0].c, curves[0].d, cacheDensity);
-        } else if (i == CurveCount) {
-            curves[i - 1] = new Bezier3DCurve(curves[i - 1].a, curves[i - 1].b, knot.handleIn, knot.position, cacheDensity);
-        } else {
-            curves[i] = new Bezier3DCurve(knot.position, knot.handleOut, curves[i].c, curves[i].d, cacheDensity);
-            curves[i - 1] = new Bezier3DCurve(curves[i - 1].a, curves[i - 1].b, knot.handleIn, knot.position, cacheDensity);
-        }
-
-        autoKnot[i] = knot.auto;
+        //If knot is set to auto, adjust handles accordingly
         orientations[i] = knot.orientation;
-        if (knot.auto > 0) {
-            AutomateKnot(i);
+        autoKnot[i] = knot.auto;
+        if (knot.auto != 0) AutomateHandles(i, ref knot);
 
-            if (i != 0) AutomateKnot(i - 1);
-            else if (closed) AutomateKnot(KnotCount - 1);
+        //Automate knots around this knot
+        int preKnotIndex, postKnotIndex;
+        GetKnotIndicesForKnot(i, out preKnotIndex, out postKnotIndex);
 
-            if (i != KnotCount - 1) AutomateKnot(i + 1);
-            else if (closed) AutomateKnot(0);
+        Knot preKnot = new Knot();
+        if (preKnotIndex != -1) {
+            preKnot = GetKnot(preKnotIndex);
+            if (preKnot.auto != 0) {
+                int preKnotPreCurveIndex, preKnotPostCurveIndex;
+                GetCurveIndicesForKnot(preKnotIndex, out preKnotPreCurveIndex, out preKnotPostCurveIndex);
+                if (preKnotPreCurveIndex != -1) {
+                    AutomateHandles(preKnotIndex, ref preKnot, curves[preKnotPreCurveIndex].a, knot.position);
+                    curves[preKnotPreCurveIndex] = new Bezier3DCurve(curves[preKnotPreCurveIndex].a, curves[preKnotPreCurveIndex].b, preKnot.handleIn, preKnot.position, cacheDensity);
+                }
+                else {
+                    AutomateHandles(preKnotIndex, ref preKnot, Vector3.zero, knot.position);
+                }
+            }
         }
+
+        Knot postKnot = new Knot();
+        if (postKnotIndex != -1) {
+            postKnot = GetKnot(postKnotIndex);
+            if (postKnot.auto != 0) {
+                int postKnotPreCurveIndex, postKnotPostCurveIndex;
+                GetCurveIndicesForKnot(postKnotIndex, out postKnotPreCurveIndex, out postKnotPostCurveIndex);
+                if (postKnotPostCurveIndex != -1) {
+                    AutomateHandles(postKnotIndex, ref postKnot, knot.position, curves[postKnotPostCurveIndex].d);
+                    curves[postKnotPostCurveIndex] = new Bezier3DCurve(postKnot.position, postKnot.handleOut, curves[postKnotPostCurveIndex].c, curves[postKnotPostCurveIndex].d, cacheDensity);
+                }
+                else {
+                    AutomateHandles(postKnotIndex, ref postKnot, knot.position, Vector3.zero);
+                }
+            }
+        }
+
+        //Get the curve indices in direct contact with knot
+        int preCurveIndex, postCurveIndex;
+        GetCurveIndicesForKnot(i, out preCurveIndex, out postCurveIndex);
+
+        //Adjust curves in direct contact with the knot
+        if (preCurveIndex != -1) curves[preCurveIndex] = new Bezier3DCurve(preKnot.position, preKnot.handleOut, knot.handleIn, knot.position, cacheDensity);
+        if (postCurveIndex != -1) curves[postCurveIndex] = new Bezier3DCurve(knot.position, knot.handleOut, postKnot.handleIn, postKnot.position, cacheDensity);
+
         _totalLength = GetTotalLength();
         if (onChanged != null) onChanged();
     }
@@ -257,6 +292,32 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 
     #region Private methods
+    /// <summary> Get the curve indices in direct contact with knot </summary>
+    private void GetCurveIndicesForKnot(int knotIndex, out int preCurveIndex, out int postCurveIndex) {
+        //Get the curve index in direct contact with, before the knot
+        preCurveIndex = -1;
+        if (knotIndex != 0) preCurveIndex = knotIndex - 1;
+        else if (closed) preCurveIndex = CurveCount - 1;
+
+        //Get the curve index in direct contact with, after the knot
+        postCurveIndex = -1;
+        if (knotIndex != CurveCount) postCurveIndex = knotIndex;
+        else if (closed) postCurveIndex = 0;
+    }
+
+    /// <summary> Get the knot indices in direct contact with knot </summary>
+    private void GetKnotIndicesForKnot(int knotIndex, out int preKnotIndex, out int postKnotIndex) {
+        //Get the curve index in direct contact with, before the knot
+        preKnotIndex = -1;
+        if (knotIndex != 0) preKnotIndex = knotIndex - 1;
+        else if (closed) preKnotIndex = KnotCount - 1;
+
+        //Get the curve index in direct contact with, after the knot
+        postKnotIndex = -1;
+        if (knotIndex != KnotCount - 1) postKnotIndex = knotIndex + 1;
+        else if (closed) postKnotIndex = 0;
+    }
+
     private Bezier3DCurve GetCurve(float splineT, out float curveT) {
         splineT *= CurveCount;
         for (int i = 0; i < CurveCount; i++) {
@@ -282,6 +343,53 @@ public class Bezier3DSpline : MonoBehaviour{
         return curves[CurveCount - 1];
     }
 
+    /// <summary> Automate handles based on previous and next point positions </summary>
+    private void AutomateHandles(int i, ref Knot knot) {
+        //Terminology: Points are referred to as A B and C
+        //A = prev point, B = current point, C = next point
+
+        Vector3 prevPos;
+        if (i != 0) prevPos = curves[i - 1].a;
+        else if (closed) prevPos = curves[CurveCount - 1].a;
+        else prevPos = Vector3.zero;
+
+        Vector3 nextPos;
+        if (i != KnotCount - 1) nextPos = curves[i].d;
+        else if (closed) nextPos = curves[0].a;
+        else nextPos = Vector3.zero;
+
+        AutomateHandles(i, ref knot, prevPos, nextPos);
+    }
+
+    /// <summary> Automate handles based on previous and next point positions </summary>
+    private void AutomateHandles(int i, ref Knot knot, Vector3 prevPos, Vector3 nextPos) {
+        //Terminology: Points are referred to as A B and C
+        //A = prev point, B = current point, C = next point
+        float amount = knot.auto;
+
+        //Calculate directional vectors
+        Vector3 AB = knot.position - prevPos;
+        Vector3 CB = knot.position - nextPos;
+        //Calculate the across vector
+        Vector3 AB_CB = (CB.normalized - AB.normalized).normalized;
+
+        if (!closed) {
+            if (i == 0) {
+                knot.handleOut = CB * -amount;
+            }
+            else if (i == CurveCount) {
+                knot.handleIn = AB * -amount;
+            }
+            else {
+                knot.handleOut = -AB_CB * CB.magnitude * amount;
+                knot.handleIn = AB_CB * AB.magnitude * amount;
+            }
+        }
+        else {
+            knot.handleOut = -AB_CB * CB.magnitude * amount;
+            knot.handleIn = AB_CB * AB.magnitude * amount;
+        }
+    }
 
     private void AutomateKnot(int i) {
         float amount = autoKnot[i];
@@ -301,11 +409,12 @@ public class Bezier3DSpline : MonoBehaviour{
 
         Vector3 np = (knot.position - prevPos).normalized;
         Vector3 pp = (knot.position - nextPos).normalized;
-        Vector3 mp = Vector3.Lerp(np, pp, 0.5f);
-        Vector3 norm = Vector3.Cross(np, pp).normalized;
-        Quaternion rot = Quaternion.AngleAxis(90, norm);
-        mp = rot * mp;
-        
+        //Vector3 mp = Vector3.Lerp(np, pp, 0.5f);
+        //Vector3 norm = Vector3.Cross(np, pp).normalized;
+        //Quaternion rot = Quaternion.AngleAxis(90, norm);
+        //mp = rot * mp;
+        Vector3 mp = pp - np;
+
         Vector3 ab = mp.normalized * amount;
         if (i == 0) {
             if (closed) curves[CurveCount - 1] = new Bezier3DCurve(curves[CurveCount - 1].a, curves[CurveCount - 1].b, ab, knot.position, cacheDensity);
