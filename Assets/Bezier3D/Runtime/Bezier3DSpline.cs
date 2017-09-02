@@ -173,7 +173,7 @@ public class Bezier3DSpline : MonoBehaviour{
             orientations.RemoveAt(i);
 
             int preKnotIndex, postKnotIndex;
-            GetKnotIndicesForKnot(i - 1, out preKnotIndex, out postKnotIndex);
+            GetKnotIndicesForKnot(i, out preKnotIndex, out postKnotIndex);
 
             SetKnot(preKnotIndex, GetKnot(preKnotIndex));
         }
