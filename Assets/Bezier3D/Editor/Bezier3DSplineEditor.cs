@@ -7,6 +7,8 @@ using System.Reflection;
 
 [CustomEditor(typeof(Bezier3DSpline))]
 public class Bezier3DSplineEditor : Editor {
+    public static Action<Bezier3DSpline> onUpdateSpline;
+
     public static bool mirror = true;
     public static float handleSize = 0.1f;
     public static Vector2 guiOffset = new Vector2(10, 10);
@@ -43,6 +45,7 @@ public class Bezier3DSplineEditor : Editor {
         steps = EditorGUILayout.DelayedIntField("Cache density", steps);
         if (EditorGUI.EndChangeCheck()) {
             spline.SetCacheDensity(steps);
+            if (onUpdateSpline != null) onUpdateSpline(spline);
         }
 
         EditorGUI.BeginChangeCheck();
@@ -50,6 +53,7 @@ public class Bezier3DSplineEditor : Editor {
         closed = EditorGUILayout.Toggle(new GUIContent("Closed", "Generate an extra curve, connecting the final point to the first point."), closed);
         if (EditorGUI.EndChangeCheck()) {
             spline.SetClosed(closed);
+            if (onUpdateSpline != null) onUpdateSpline(spline);
             SceneView.RepaintAll();
         }
         EditorGUI.indentLevel = 0;
@@ -72,6 +76,7 @@ public class Bezier3DSplineEditor : Editor {
                 if (orientation) knot.orientation = Quaternion.identity;
                 else knot.orientation = null;
                 spline.SetKnot(activeKnot, knot);
+                if (onUpdateSpline != null) onUpdateSpline(spline);
                 SceneView.RepaintAll();
             }
 
@@ -84,6 +89,7 @@ public class Bezier3DSplineEditor : Editor {
                 if (auto) knot.auto = 0.33f;
                 else knot.auto = 0f;
                 spline.SetKnot(activeKnot, knot);
+                if (onUpdateSpline != null) onUpdateSpline(spline);
                 SceneView.RepaintAll();
             }
 
@@ -214,6 +220,7 @@ public class Bezier3DSplineEditor : Editor {
                 Undo.RecordObject(spline, "Edit Bezier Point");
                 knot.position = spline.transform.InverseTransformPoint(knotWorldPos);
                 spline.SetKnot(activeKnot, knot);
+                if (onUpdateSpline != null) onUpdateSpline(spline);
             }
         }
         else if (Tools.current == Tool.Rotate) {
@@ -229,6 +236,7 @@ public class Bezier3DSplineEditor : Editor {
                 Undo.RecordObject(spline, "Edit Bezier Point");
                 knot.orientation = rot;
                 spline.SetKnot(activeKnot, knot);
+                if (onUpdateSpline != null) onUpdateSpline(spline);
                 Repaint();
             }
         }
@@ -247,6 +255,7 @@ public class Bezier3DSplineEditor : Editor {
                 knot.handleIn = spline.transform.InverseTransformPoint(inHandleWorldPos) - knot.position;
                 if (mirror) knot.handleOut = -knot.handleIn;
                 spline.SetKnot(activeKnot, knot);
+                if (onUpdateSpline != null) onUpdateSpline(spline);
             }
             Handles.DrawLine(knotWorldPos, inHandleWorldPos);
         }
@@ -263,6 +272,7 @@ public class Bezier3DSplineEditor : Editor {
                 knot.handleOut = spline.transform.InverseTransformPoint(outHandleWorldPos) - knot.position;
                 if (mirror) knot.handleIn = -knot.handleOut;
                 spline.SetKnot(activeKnot, knot);
+                if (onUpdateSpline != null) onUpdateSpline(spline);
             }
             Handles.DrawLine(knotWorldPos, outHandleWorldPos);
         }
@@ -276,6 +286,7 @@ public class Bezier3DSplineEditor : Editor {
                         Undo.RecordObject(spline, "Remove Bezier Point");
                         spline.RemoveKnot(activeKnot);
                         SelectKnot(-1, false);
+                        if (onUpdateSpline != null) onUpdateSpline(spline);
                     }
                     e.Use();
 
@@ -303,6 +314,7 @@ public class Bezier3DSplineEditor : Editor {
             if (Handles.Button(a - b, Camera.current.transform.rotation, handleScale * handleSize * 0.4f, handleScale * handleSize * 0.4f, Handles.DotHandleCap)) {
                 Undo.RecordObject(spline, "Add Bezier Point");
                 spline.InsertKnot(0, new Bezier3DSpline.Knot(curve.a - (curve.b.normalized * handleScale * 2), Vector3.zero, curve.b.normalized * 0.5f));
+                if (onUpdateSpline != null) onUpdateSpline(spline);
             }
         }
 
@@ -319,6 +331,7 @@ public class Bezier3DSplineEditor : Editor {
                 Undo.RecordObject(spline, "Add Bezier Point");
                 spline.AddKnot(new Bezier3DSpline.Knot(curve.d - (curve.c.normalized * handleScale * 2), curve.c.normalized * 0.5f, Vector3.zero));
                 SelectKnot(spline.CurveCount, false);
+                if (onUpdateSpline != null) onUpdateSpline(spline);
             }
         }
 
@@ -338,6 +351,7 @@ public class Bezier3DSplineEditor : Editor {
                 Undo.RecordObject(spline, "Add Bezier Point");
                 spline.InsertKnot(activeKnot == 0 ? spline.CurveCount : activeKnot, new Bezier3DSpline.Knot(centerLocal, -ab, ab));
                 if (activeKnot == 0) SelectKnot(spline.CurveCount - 1, false);
+                if (onUpdateSpline != null) onUpdateSpline(spline);
             }
         }
 
@@ -355,6 +369,7 @@ public class Bezier3DSplineEditor : Editor {
                 Undo.RecordObject(spline, "Add Bezier Point");
                 spline.InsertKnot(activeKnot + 1, new Bezier3DSpline.Knot(centerLocal, -ab, ab));
                 SelectKnot(activeKnot + 1, false);
+                if (onUpdateSpline != null) onUpdateSpline(spline);
             }
         }
 
