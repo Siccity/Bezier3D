@@ -6,7 +6,7 @@ using UnityEngine;
 /// Immutable Bezier curve between two points
 /// </summary>
 [System.Serializable]
-public struct Bezier3DCurve {
+public class Bezier3DCurve {
 
 
     /// <summary> Start point </summary>
