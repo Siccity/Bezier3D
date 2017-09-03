@@ -110,7 +110,7 @@ public class Bezier3DSpline : MonoBehaviour{
 
     /// <summary> Return point at lerped position where 0 = start, 1 = end </summary>
     public Vector3 GetPointLocal(float dist) {
-        Bezier3DCurve curve = GetCurve(dist, out dist);
+        Bezier3DCurve curve = GetCurveDistance(dist, out dist);
         return curve.GetPoint(curve.Dist2Time(dist));
     }
     #endregion
