@@ -339,7 +339,7 @@ public class Bezier3DSplineEditor : Editor {
         if (spline.closed || activeKnot != 0) {
 
             Bezier3DCurve curve = spline.GetCurve(activeKnot == 0 ? spline.CurveCount - 1 : activeKnot - 1);
-            Vector3 centerLocal = curve.GetPointDistance(curve.length * 0.5f);
+            Vector3 centerLocal = curve.GetPoint(curve.Dist2Time(curve.length * 0.5f));
             Vector3 center = spline.transform.TransformPoint(centerLocal);
 
             Vector3 a = curve.a + curve.b;
@@ -358,7 +358,7 @@ public class Bezier3DSplineEditor : Editor {
         // Next split
         if (activeKnot != spline.CurveCount) {
             Bezier3DCurve curve = spline.GetCurve(activeKnot);
-            Vector3 centerLocal = curve.GetPointDistance(curve.length * 0.5f);
+            Vector3 centerLocal = curve.GetPoint(curve.Dist2Time(curve.length * 0.5f));
             Vector3 center = spline.transform.TransformPoint(centerLocal);
 
             Vector3 a = curve.a + curve.b;
@@ -425,15 +425,16 @@ public class Bezier3DSplineEditor : Editor {
     }
 
     private void VisualizeOrientation() {
-        for (float t = 0f; t < spline.totalLength; t += 1) {
-            Vector3 point = spline.GetPointByDistance(t);
-            Quaternion rot = spline.GetOrientation(spline.DistanceToTime(t));
+        for (float dist = 0f; dist < spline.totalLength; dist += 1) {
+            Vector3 point = spline.GetPoint(dist);
+            Quaternion rot = spline.GetOrientation(dist);
+            Vector3 forwardFast = spline.GetForwardFast(dist);
             Vector3 up = rot * Vector3.up;
             Vector3 fwd = rot * Vector3.forward;
             Handles.color = Color.white;
             Handles.DrawLine(point, point + up);
             Handles.color = Handles.zAxisColor;
-            Handles.DrawLine(point, point + fwd);
+            Handles.DrawLine(point, point + forwardFast.normalized);
         }
     }
 
