@@ -11,6 +11,15 @@ public class SplineTrain : MonoBehaviour {
     public float speed = 1;
     public float startPos = 0;
 
+    [ContextMenu("TEST")]
+    void Test( ) {
+        for (int i = 0; i < 100000; i++) {
+            spline.GetForwardLocal(startPos);
+        }
+        for (int i = 0; i < 100000; i++) {
+            spline.GetForwardLocalFast(startPos);
+        }
+    }
     void Start() {
         if (!spline) Debug.LogWarning("Please assign a spline to SplineTrain", this);
     }
@@ -36,12 +45,12 @@ public class SplineTrain : MonoBehaviour {
             break;
         }
         if (distance) {
-            transform.position = spline.GetPointByDistance(pos);
-            transform.rotation = spline.GetOrientationDistance(pos);
-        }
-        else {
             transform.position = spline.GetPoint(pos);
             transform.rotation = spline.GetOrientation(pos);
+        }
+        else {
+            transform.position = spline.GetPoint(spline.DistanceToTime(pos));
+            transform.rotation = spline.GetOrientation(spline.DistanceToTime(pos));
         }
     }
 }

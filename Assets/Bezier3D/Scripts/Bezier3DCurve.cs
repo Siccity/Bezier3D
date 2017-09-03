@@ -6,7 +6,7 @@ using UnityEngine;
 /// Immutable Bezier curve between two points
 /// </summary>
 [System.Serializable]
-public struct Bezier3DCurve {
+public class Bezier3DCurve {
 
 
     /// <summary> Start point </summary>
@@ -30,6 +30,7 @@ public struct Bezier3DCurve {
 
     public AnimationCurve cache { get { return _cache; } }
     [SerializeField] private AnimationCurve _cache;
+    [SerializeField] private Vector3AnimationCurve _tangentCache;
 
     /// <summary> Constructor </summary>
 	public Bezier3DCurve(Vector3 a, Vector3 b, Vector3 c, Vector3 d, int steps) {
@@ -40,6 +41,7 @@ public struct Bezier3DCurve {
         _B = a + b;
         _C = d + c;
         _cache = GetDistanceCache(a,a+b,c+d,d,steps);
+        _tangentCache = GetTangentCache(a, a + b, c + d, d, steps);
         _length = _cache.keys[_cache.keys.Length - 1].time;
     }
 
@@ -48,16 +50,12 @@ public struct Bezier3DCurve {
 		return GetPoint(_a, _B, _C, _d, t);
 	}
 
-    public Vector3 GetPointDistance(float distance) {
-        return GetPoint(_a, _B, _C, _d, Dist2Time(distance));
-    }
-
     public Vector3 GetForward(float t) {
         return GetForward(_a, _B, _C, _d, t);
     }
 
-    public Vector3 GetForwardDistance(float distance) {
-        return GetForward(_a, _B, _C, _d, Dist2Time(distance));
+    public Vector3 GetForwardFast(float t) {
+        return _tangentCache.Evaluate(t);
     }
 
     public float Dist2Time(float distance) {
@@ -66,6 +64,15 @@ public struct Bezier3DCurve {
     #endregion
 
     #region Private methods
+    private static Vector3AnimationCurve GetTangentCache(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, int steps) {
+        Vector3AnimationCurve curve = new Vector3AnimationCurve(); //time = distance, value = time
+        float delta = 1f / steps;
+        for (int i = 0; i < steps+1; i++) {
+            curve.AddKey(delta * i, GetForward(p0, p1, p2, p3, delta * i).normalized);
+        }
+        return curve;
+    }
+
     private static AnimationCurve GetDistanceCache(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, int steps) {
         AnimationCurve curve = new AnimationCurve(); //time = distance, value = time
         Vector3 prevPos = Vector3.zero;

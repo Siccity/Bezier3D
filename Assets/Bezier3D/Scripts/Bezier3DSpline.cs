@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Linq;
 using UnityEngine.Serialization;
 
 [AddComponentMenu("Miscellaneous/Bezier Spline")]
 public class Bezier3DSpline : MonoBehaviour{
-    /// <summary> Callback for when the spline changes </summary>
-    public Action onChanged;
-	public int KnotCount { get { return curves.Count+(closed?0:1); } }
-	public int CurveCount { get { return curves.Count; } }
+
+	public int KnotCount { get { return curves.Length+(closed?0:1); } }
+	public int CurveCount { get { return curves.Length; } }
     /// <summary> Interpolation steps per curve </summary>
     public int cacheDensity { get { return _cacheDensity; } }
     [SerializeField] protected int _cacheDensity = 60;
@@ -20,105 +20,15 @@ public class Bezier3DSpline : MonoBehaviour{
     public float totalLength { get { return _totalLength; } }
     [SerializeField] protected float _totalLength = 2.370671f;
     /// <summary> Curves of the spline </summary>
-    [SerializeField] protected List<Bezier3DCurve> curves = new List<Bezier3DCurve>() { new Bezier3DCurve( new Vector3(-1,0,0), new Vector3(1,0,1), new Vector3(-1,0,-1), new Vector3(1,0,0), 60)};
+    [SerializeField] protected Bezier3DCurve[] curves = new Bezier3DCurve[] { new Bezier3DCurve( new Vector3(-1,0,0), new Vector3(1,0,1), new Vector3(-1,0,-1), new Vector3(1,0,0), 60)};
     /// <summary> Automatic knots don't have handles. Instead they have a percentage and adjust their handles accordingly. A percentage of 0 indicates that this is not automatic </summary>
     [SerializeField] protected List<float> autoKnot = new List<float>() { 0, 0 };
     [SerializeField] protected List<NullableQuaternion> orientations = new List<NullableQuaternion>() { new NullableQuaternion(null), new NullableQuaternion(null) };
+    [SerializeField] protected Vector3[] tangentCache = new Vector3[0];
 
     #region Public methods
-    /// <summary> Setting spline to closed will generate an extra curve, connecting end point to start point </summary>
-    public void SetClosed(bool closed) {
-        if (closed != _closed) {
-            _closed = closed;
-            if (closed) {
-                curves.Add(new Bezier3DCurve(curves[CurveCount - 1].d, -curves[CurveCount - 1].c, -curves[0].b, curves[0].a,cacheDensity));
-            } else {
-                curves.RemoveAt(CurveCount - 1);
-            }
-            _totalLength = GetTotalLength();
-        }
-    }
 
-    /// <summary> Recache all individual curves with new step amount </summary> 
-    /// <param name="density"> Number of steps per curve </param>
-    public void SetCacheDensity(int steps) {
-        _cacheDensity = steps;
-        for (int i = 0; i < CurveCount; i++) {
-            curves[i] = new Bezier3DCurve(curves[i].a, curves[i].b, curves[i].c, curves[i].d, _cacheDensity);
-        }
-        _totalLength = GetTotalLength();
-    }
-
-    /// <summary> Return point at lerped position where 0 = start, 1 = end </summary>
-	public Vector3 GetPoint(float t, bool world = true) {
-        Bezier3DCurve curve = GetCurve(t, out t);
-        if (world) return transform.TransformPoint(curve.GetPoint(t));
-        else return curve.GetPoint(t);
-    }
-
-    /// <summary> Return point in at set distance along spline </summary>
-    public Vector3 GetPointByDistance(float dist, bool world = true) {
-        Bezier3DCurve curve = GetCurveDistance(dist, out dist);
-        if (world) return transform.TransformPoint(curve.GetPointDistance(dist));
-        else return curve.GetPointDistance(dist);
-    }
-
-    /// <summary> Return forward vector at lerped position where 0 = start, 1 = end </summary>
-	public Vector3 GetForward(float t, bool world = true) {
-        Bezier3DCurve curve = GetCurve(t, out t);
-        if (world) return transform.TransformDirection(curve.GetForward(t));
-        return curve.GetForward(t);
-    }
-
-    /// <summary> Return forward vector at set distance along spline </summary>
-    public Vector3 GetForwardByDistance(float dist, bool world = true) {
-        Bezier3DCurve curve = GetCurveDistance(dist, out dist);
-        if (world) return transform.TransformDirection(curve.GetForwardDistance(dist));
-        return curve.GetForwardDistance(dist);
-    }
-
-    public Vector3 GetUp(float t) {
-        Vector3 tangent = GetForward(t);
-        t *= CurveCount;
-
-        Vector3 up = Vector3.up;
-        Quaternion rot_a = Quaternion.identity, rot_b = Quaternion.identity;
-        int t_a = 0, t_b = 0;
-
-        //Find preceding rotation
-        for (int i = Mathf.Min((int)t,CurveCount); i >= 0; i--) {
-            if (orientations[i].HasValue) {
-                rot_a = orientations[i].Value;
-                rot_b = orientations[i].Value;
-                t_a = i;
-                t_b = i;
-                break;
-            }
-        }
-        //Find proceding rotation
-        for (int i = Mathf.Max((int)t+1,0); i < orientations.Count; i++) {
-            if (orientations[i].HasValue) {
-                rot_b = orientations[i].Value;
-                t_b = i;
-                break;
-            }
-        }
-        t = Mathf.InverseLerp(t_a, t_b, t);
-        Quaternion rot = Quaternion.Lerp(rot_a, rot_b, t);
-        rot = transform.rotation * rot;
-        //Debug.Log(t_a + " / " + t_b + " / " + t);
-        return Vector3.ProjectOnPlane(rot * Vector3.up, tangent).normalized;
-    }
-
-    public Quaternion GetOrientation(float t) {
-        Vector3 up = GetUp(t);
-        Vector3 forward = GetForward(t);
-        return Quaternion.LookRotation(forward, up);
-    }
-
-    public Quaternion GetOrientationDistance(float dist) {
-        return GetOrientation(DistanceToTime(dist));
-    }
+    #region Public: get
 
     public float DistanceToTime(float dist) {
         float t = 0f;
@@ -135,11 +45,148 @@ public class Bezier3DSpline : MonoBehaviour{
         return 1f;
     }
 
-    /// <summary> Get curve by index </summary>
-	public Bezier3DCurve GetCurve(int i) {
-        if (i>CurveCount) throw new System.IndexOutOfRangeException("Cuve index " + i + " out of range");
-		return curves[i];
-	}
+    /// <summary> Get <see cref="Bezier3DCurve"/> by index </summary>
+    public Bezier3DCurve GetCurve(int i) {
+        if (i > CurveCount) throw new System.IndexOutOfRangeException("Cuve index " + i + " out of range");
+        return curves[i];
+    }
+
+    /// <summary> Return <see cref="Knot"/> info in local coordinates </summary>
+    public Knot GetKnot(int i) {
+        if (i == 0) {
+            if (closed) return new Knot(curves[0].a, curves[CurveCount - 1].c, curves[0].b, autoKnot[i], orientations[i].NullableValue);
+            else return new Knot(curves[0].a, Vector3.zero, curves[0].b, autoKnot[i], orientations[i].NullableValue);
+        }
+        else if (i == CurveCount) {
+            return new Knot(curves[i - 1].d, curves[i - 1].c, Vector3.zero, autoKnot[i], orientations[i].NullableValue);
+        }
+        else {
+            return new Knot(curves[i].a, curves[i - 1].c, curves[i].b, autoKnot[i], orientations[i].NullableValue);
+        }
+    }
+
+    #region Public get: Forward
+    /// <summary> Return forward vector at set distance along the <see cref="Bezier3DSpline"/>. </summary>
+    public Vector3 GetForward(float dist) {
+        return transform.TransformDirection(GetForwardLocal(dist));
+    }
+
+    /// <summary> Return forward vector at set distance along the <see cref="Bezier3DSpline"/> in local coordinates. </summary>
+    public Vector3 GetForwardLocal(float dist) {
+        Bezier3DCurve curve = GetCurveDistance(dist, out dist);
+        return curve.GetForward(curve.Dist2Time(dist));
+    }
+
+    /// <summary> Return forward vector at set distance along the <see cref="Bezier3DSpline"/>. Uses approximation. </summary>
+    public Vector3 GetForwardFast(float dist) {
+        return transform.TransformDirection(GetForwardLocalFast(dist));
+    }
+
+    /// <summary> Return forward vector at set distance along the <see cref="Bezier3DSpline"/> in local coordinates. Uses approximation. </summary>
+    public Vector3 GetForwardLocalFast(float dist) {
+        Bezier3DCurve curve = GetCurveDistance(dist, out dist);
+        return curve.GetForwardFast(curve.Dist2Time(dist));
+    }
+    #endregion
+
+    #region Public get: Up
+    /// <summary> Return up vector at set distance along the <see cref="Bezier3DSpline"/>. </summary>
+    public Vector3 GetUp(float dist) {
+        return GetUp(dist, GetForward(dist));
+    }
+
+
+    private Vector3 GetUp(float dist, Vector3 tangent) {
+        float t = DistanceToTime(dist);
+        t *= CurveCount;
+
+        Quaternion rot_a = Quaternion.identity, rot_b = Quaternion.identity;
+        int t_a = 0, t_b = 0;
+
+        //Find preceding rotation
+        for (int i = Mathf.Min((int)t, CurveCount); i >= 0; i--) {
+            if (orientations[i].HasValue) {
+                rot_a = orientations[i].Value;
+                rot_b = orientations[i].Value;
+                t_a = i;
+                t_b = i;
+                break;
+            }
+        }
+        //Find proceding rotation
+        for (int i = Mathf.Max((int)t + 1, 0); i < orientations.Count; i++) {
+            if (orientations[i].HasValue) {
+                rot_b = orientations[i].Value;
+                t_b = i;
+                break;
+            }
+        }
+        t = Mathf.InverseLerp(t_a, t_b, t);
+        Quaternion rot = Quaternion.Lerp(rot_a, rot_b, t);
+        rot = transform.rotation * rot;
+        //Debug.Log(t_a + " / " + t_b + " / " + t);
+        return Vector3.ProjectOnPlane(rot * Vector3.up, tangent).normalized;
+    }
+    #endregion
+
+    #region Public get: Point
+    /// <summary> Return up vector at set distance along the <see cref="Bezier3DSpline"/>. </summary>
+    public Vector3 GetPoint(float dist) {
+        Bezier3DCurve curve = GetCurveDistance(dist, out dist);
+        return transform.TransformPoint(curve.GetPoint(curve.Dist2Time(dist)));
+    }
+
+    /// <summary> Return point at lerped position where 0 = start, 1 = end </summary>
+    public Vector3 GetPointLocal(float dist) {
+        Bezier3DCurve curve = GetCurve(dist, out dist);
+        return curve.GetPoint(curve.Dist2Time(dist));
+    }
+    #endregion
+
+    #region Public get: Orientation
+    public Quaternion GetOrientation(float dist) {
+        Vector3 forward = GetForward(dist);
+        Vector3 up = GetUp(dist, forward);
+        return Quaternion.LookRotation(forward, up);
+    }
+
+    public Quaternion GetOrientationFast(float dist) {
+        Vector3 forward = GetForwardFast(dist);
+        Vector3 up = GetUp(dist, forward);
+        return Quaternion.LookRotation(forward, up);
+    }
+    #endregion
+
+    #endregion
+
+    #region Public: Set
+    /// <summary> Setting spline to closed will generate an extra curve, connecting end point to start point </summary>
+    public void SetClosed(bool closed) {
+        if (closed != _closed) {
+            _closed = closed;
+            if (closed) {
+                List<Bezier3DCurve> curveList = new List<Bezier3DCurve>(curves);
+                curveList.Add(new Bezier3DCurve(curves[CurveCount - 1].d, -curves[CurveCount - 1].c, -curves[0].b, curves[0].a, cacheDensity));
+                curves = curveList.ToArray();
+            }
+            else {
+                List<Bezier3DCurve> curveList = new List<Bezier3DCurve>(curves);
+                curveList.RemoveAt(CurveCount - 1);
+                curves = curveList.ToArray();
+            }
+            _totalLength = GetTotalLength();
+        }
+    }
+
+    /// <summary> Recache all individual curves with new step amount </summary> 
+    /// <param name="density"> Number of steps per curve </param>
+    public void SetCacheDensity(int steps) {
+        _cacheDensity = steps;
+        for (int i = 0; i < CurveCount; i++) {
+            curves[i] = new Bezier3DCurve(curves[i].a, curves[i].b, curves[i].c, curves[i].d, _cacheDensity);
+        }
+        _totalLength = GetTotalLength();
+    }
 
     public void RemoveKnot(int i) {
         if (i == 0) {
@@ -148,18 +195,26 @@ public class Bezier3DSpline : MonoBehaviour{
                 Debug.LogWarning("RemoveKnot(0) broken while cyclic is enabled. Toggle off cyclic, remove the point and toggle cyclic back on");
                 return;
             }
-            curves.RemoveAt(0);
+
+            List<Bezier3DCurve> curveList = new List<Bezier3DCurve>(curves);
+            curveList.RemoveAt(0);
+            curves = curveList.ToArray();
+
             autoKnot.RemoveAt(0);
             orientations.RemoveAt(0);
 
             if (autoKnot[0] != 0) SetKnot(0, GetKnot(0));
         }
         else if (i == CurveCount) {
-            curves.RemoveAt(i - 1);
+
+            List<Bezier3DCurve> curveList = new List<Bezier3DCurve>(curves);
+            curveList.RemoveAt(i - 1);
+            curves = curveList.ToArray();
+
             autoKnot.RemoveAt(i);
             orientations.RemoveAt(i);
 
-            if (autoKnot[KnotCount-1] != 0) SetKnot(KnotCount-1, GetKnot(KnotCount-1));
+            if (autoKnot[KnotCount - 1] != 0) SetKnot(KnotCount - 1, GetKnot(KnotCount - 1));
         }
         else {
             int preCurveIndex, postCurveIndex;
@@ -168,7 +223,11 @@ public class Bezier3DSpline : MonoBehaviour{
             Bezier3DCurve curve = new Bezier3DCurve(curves[preCurveIndex].a, curves[preCurveIndex].b, curves[postCurveIndex].c, curves[postCurveIndex].d, cacheDensity);
 
             curves[preCurveIndex] = curve;
-            curves.RemoveAt(postCurveIndex);
+
+            List<Bezier3DCurve> curveList = new List<Bezier3DCurve>(curves);
+            curveList.RemoveAt(postCurveIndex);
+            curves = curveList.ToArray();
+
             autoKnot.RemoveAt(i);
             orientations.RemoveAt(i);
 
@@ -180,21 +239,27 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 
     public void AddKnot(Knot knot) {
-        Bezier3DCurve curve = new Bezier3DCurve(curves[CurveCount-1].d, -curves[CurveCount - 1].c, knot.handleIn, knot.position, cacheDensity);
+        Bezier3DCurve curve = new Bezier3DCurve(curves[CurveCount - 1].d, -curves[CurveCount - 1].c, knot.handleIn, knot.position, cacheDensity);
 
-        curves.Add(curve);
+        List<Bezier3DCurve> curveList = new List<Bezier3DCurve>(curves);
+        curveList.Add(curve);
+        curves = curveList.ToArray();
+
         autoKnot.Add(knot.auto);
         orientations.Add(knot.orientation);
-        SetKnot(KnotCount-1, knot);
+        SetKnot(KnotCount - 1, knot);
     }
 
     public void InsertKnot(int i, Knot knot) {
         Bezier3DCurve curve;
         if (i == 0) curve = new Bezier3DCurve(knot.position, knot.handleOut, -curves[0].b, curves[0].a, cacheDensity);
-        else if (i == CurveCount) curve = GetCurve(i-1);
+        else if (i == CurveCount) curve = GetCurve(i - 1);
         else curve = GetCurve(i);
 
-        curves.Insert(i, curve);
+        List<Bezier3DCurve> curveList = new List<Bezier3DCurve>(curves);
+        curveList.Insert(i, curve);
+        curves = curveList.ToArray();
+
         autoKnot.Insert(i, knot.auto);
         orientations.Insert(i, knot.orientation);
         SetKnot(i, knot);
@@ -252,20 +317,10 @@ public class Bezier3DSpline : MonoBehaviour{
         if (postCurveIndex != -1) curves[postCurveIndex] = new Bezier3DCurve(knot.position, knot.handleOut, postKnot.handleIn, postKnot.position, cacheDensity);
 
         _totalLength = GetTotalLength();
-        if (onChanged != null) onChanged();
-    }
 
-    /// <summary> Return Knot info in local coordinates </summary>
-    public Knot GetKnot(int i) {
-        if (i == 0) {
-            if (closed) return new Knot(curves[0].a, curves[CurveCount - 1].c, curves[0].b, autoKnot[i], orientations[i].NullableValue);
-            else return new Knot(curves[0].a, Vector3.zero, curves[0].b, autoKnot[i], orientations[i].NullableValue);
-        } else if (i == CurveCount) {
-            return new Knot(curves[i - 1].d, curves[i - 1].c, Vector3.zero, autoKnot[i], orientations[i].NullableValue);
-        } else {
-            return new Knot(curves[i].a, curves[i - 1].c, curves[i].b,autoKnot[i], orientations[i].NullableValue);
-        }
-    } 
+    }
+    #endregion
+
     #endregion
 
     public struct Knot {
@@ -287,11 +342,11 @@ public class Bezier3DSpline : MonoBehaviour{
             this.auto = automatic;
             this.orientation = orientation;
         }
-        
-        
     }
 
     #region Private methods
+
+
     /// <summary> Get the curve indices in direct contact with knot </summary>
     private void GetCurveIndicesForKnot(int knotIndex, out int preCurveIndex, out int postCurveIndex) {
         //Get the curve index in direct contact with, before the knot
