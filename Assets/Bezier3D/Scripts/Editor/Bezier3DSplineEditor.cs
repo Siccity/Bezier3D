@@ -36,6 +36,8 @@ public class Bezier3DSplineEditor : Editor {
 
         ValidateSelected();
 
+        Hotkeys();
+
         EditorGUILayout.LabelField("Spline settings");
 
         EditorGUI.indentLevel = 1;
@@ -137,6 +139,15 @@ public class Bezier3DSplineEditor : Editor {
                     SceneView.RepaintAll();
                 }
             }
+        }
+    }
+
+    void Hotkeys() {
+        Event e = Event.current;
+        switch (e.type) {
+            case EventType.ValidateCommand:
+                if (e.commandName == "UndoRedoPerformed") if (onUpdateSpline != null) onUpdateSpline(spline);
+                break;
         }
     }
 
