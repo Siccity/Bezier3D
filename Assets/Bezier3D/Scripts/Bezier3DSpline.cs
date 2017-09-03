@@ -45,13 +45,13 @@ public class Bezier3DSpline : MonoBehaviour{
         return 1f;
     }
 
-    /// <summary> Get curve by index </summary>
+    /// <summary> Get <see cref="Bezier3DCurve"/> by index </summary>
     public Bezier3DCurve GetCurve(int i) {
         if (i > CurveCount) throw new System.IndexOutOfRangeException("Cuve index " + i + " out of range");
         return curves[i];
     }
 
-    /// <summary> Return Knot info in local coordinates </summary>
+    /// <summary> Return <see cref="Knot"/> info in local coordinates </summary>
     public Knot GetKnot(int i) {
         if (i == 0) {
             if (closed) return new Knot(curves[0].a, curves[CurveCount - 1].c, curves[0].b, autoKnot[i], orientations[i].NullableValue);
@@ -66,23 +66,23 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 
     #region Public get: Forward
-    /// <summary> Return forward vector at lerped position where 0 = start, 1 = end </summary>
+    /// <summary> Return forward vector at set distance along the <see cref="Bezier3DSpline"/>. </summary>
     public Vector3 GetForward(float dist) {
         return transform.TransformDirection(GetForwardLocal(dist));
     }
 
-    /// <summary> Return forward vector at lerped position where 0 = start, 1 = end </summary>
+    /// <summary> Return forward vector at set distance along the <see cref="Bezier3DSpline"/> in local coordinates. </summary>
     public Vector3 GetForwardLocal(float dist) {
         Bezier3DCurve curve = GetCurveDistance(dist, out dist);
         return curve.GetForward(curve.Dist2Time(dist));
     }
 
-    /// <summary> Return forward vector at lerped position where 0 = start, 1 = end </summary>
+    /// <summary> Return forward vector at set distance along the <see cref="Bezier3DSpline"/>. Uses approximation. </summary>
     public Vector3 GetForwardFast(float dist) {
         return transform.TransformDirection(GetForwardLocalFast(dist));
     }
 
-    /// <summary> Return forward vector at lerped position where 0 = start, 1 = end </summary>
+    /// <summary> Return forward vector at set distance along the <see cref="Bezier3DSpline"/> in local coordinates. Uses approximation. </summary>
     public Vector3 GetForwardLocalFast(float dist) {
         Bezier3DCurve curve = GetCurveDistance(dist, out dist);
         return curve.GetForwardFast(curve.Dist2Time(dist));
@@ -90,9 +90,11 @@ public class Bezier3DSpline : MonoBehaviour{
     #endregion
 
     #region Public get: Up
+    /// <summary> Return up vector at set distance along the <see cref="Bezier3DSpline"/>. </summary>
     public Vector3 GetUp(float dist) {
         return GetUp(dist, GetForward(dist));
     }
+
 
     private Vector3 GetUp(float dist, Vector3 tangent) {
         float t = DistanceToTime(dist);
@@ -128,7 +130,7 @@ public class Bezier3DSpline : MonoBehaviour{
     #endregion
 
     #region Public get: Point
-    /// <summary> Return point at lerped position where 0 = start, 1 = end </summary>
+    /// <summary> Return up vector at set distance along the <see cref="Bezier3DSpline"/>. </summary>
     public Vector3 GetPoint(float dist) {
         Bezier3DCurve curve = GetCurveDistance(dist, out dist);
         return transform.TransformPoint(curve.GetPoint(curve.Dist2Time(dist)));
