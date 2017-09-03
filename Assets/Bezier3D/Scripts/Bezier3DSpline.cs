@@ -92,40 +92,12 @@ public class Bezier3DSpline : MonoBehaviour{
     #region Public get: Up
     /// <summary> Return up vector at set distance along the <see cref="Bezier3DSpline"/>. </summary>
     public Vector3 GetUp(float dist) {
-        return GetUp(dist, GetForward(dist));
+        return GetUp(dist, GetForward(dist), false);
     }
 
-
-    private Vector3 GetUp(float dist, Vector3 tangent) {
-        float t = DistanceToTime(dist);
-        t *= CurveCount;
-
-        Quaternion rot_a = Quaternion.identity, rot_b = Quaternion.identity;
-        int t_a = 0, t_b = 0;
-
-        //Find preceding rotation
-        for (int i = Mathf.Min((int)t, CurveCount); i >= 0; i--) {
-            if (orientations[i].HasValue) {
-                rot_a = orientations[i].Value;
-                rot_b = orientations[i].Value;
-                t_a = i;
-                t_b = i;
-                break;
-            }
-        }
-        //Find proceding rotation
-        for (int i = Mathf.Max((int)t + 1, 0); i < orientations.Count; i++) {
-            if (orientations[i].HasValue) {
-                rot_b = orientations[i].Value;
-                t_b = i;
-                break;
-            }
-        }
-        t = Mathf.InverseLerp(t_a, t_b, t);
-        Quaternion rot = Quaternion.Lerp(rot_a, rot_b, t);
-        rot = transform.rotation * rot;
-        //Debug.Log(t_a + " / " + t_b + " / " + t);
-        return Vector3.ProjectOnPlane(rot * Vector3.up, tangent).normalized;
+    /// <summary> Return up vector at set distance along the <see cref="Bezier3DSpline"/> in local coordinates. </summary>
+    public Vector3 GetUpLocal(float dist) {
+        return GetUp(dist, GetForward(dist), true);
     }
     #endregion
 
@@ -146,13 +118,25 @@ public class Bezier3DSpline : MonoBehaviour{
     #region Public get: Orientation
     public Quaternion GetOrientation(float dist) {
         Vector3 forward = GetForward(dist);
-        Vector3 up = GetUp(dist, forward);
+        Vector3 up = GetUp(dist, forward, false);
         return Quaternion.LookRotation(forward, up);
     }
 
     public Quaternion GetOrientationFast(float dist) {
         Vector3 forward = GetForwardFast(dist);
-        Vector3 up = GetUp(dist, forward);
+        Vector3 up = GetUp(dist, forward, false);
+        return Quaternion.LookRotation(forward, up);
+    }
+
+    public Quaternion GetOrientationLocal(float dist) {
+        Vector3 forward = GetForwardLocal(dist);
+        Vector3 up = GetUp(dist, forward, true);
+        return Quaternion.LookRotation(forward, up);
+    }
+
+    public Quaternion GetOrientationLocalFast(float dist) {
+        Vector3 forward = GetForwardLocalFast(dist);
+        Vector3 up = GetUp(dist, forward, true);
         return Quaternion.LookRotation(forward, up);
     }
     #endregion
@@ -345,7 +329,37 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 
     #region Private methods
+    private Vector3 GetUp(float dist, Vector3 tangent, bool local) {
+        float t = DistanceToTime(dist);
+        t *= CurveCount;
 
+        Quaternion rot_a = Quaternion.identity, rot_b = Quaternion.identity;
+        int t_a = 0, t_b = 0;
+
+        //Find preceding rotation
+        for (int i = Mathf.Min((int)t, CurveCount); i >= 0; i--) {
+            if (orientations[i].HasValue) {
+                rot_a = orientations[i].Value;
+                rot_b = orientations[i].Value;
+                t_a = i;
+                t_b = i;
+                break;
+            }
+        }
+        //Find proceding rotation
+        for (int i = Mathf.Max((int)t + 1, 0); i < orientations.Count; i++) {
+            if (orientations[i].HasValue) {
+                rot_b = orientations[i].Value;
+                t_b = i;
+                break;
+            }
+        }
+        t = Mathf.InverseLerp(t_a, t_b, t);
+        Quaternion rot = Quaternion.Lerp(rot_a, rot_b, t);
+        if (!local) rot = transform.rotation * rot;
+        //Debug.Log(t_a + " / " + t_b + " / " + t);
+        return Vector3.ProjectOnPlane(rot * Vector3.up, tangent).normalized;
+    }
 
     /// <summary> Get the curve indices in direct contact with knot </summary>
     private void GetCurveIndicesForKnot(int knotIndex, out int preCurveIndex, out int postCurveIndex) {
