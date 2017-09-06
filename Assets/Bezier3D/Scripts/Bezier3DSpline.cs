@@ -174,11 +174,7 @@ public class Bezier3DSpline : MonoBehaviour{
 
     public void RemoveKnot(int i) {
         if (i == 0) {
-            //FIXME
-            if (closed) {
-                Debug.LogWarning("RemoveKnot(0) broken while cyclic is enabled. Toggle off cyclic, remove the point and toggle cyclic back on");
-                return;
-            }
+            Knot knot = GetKnot(1);
 
             List<Bezier3DCurve> curveList = new List<Bezier3DCurve>(curves);
             curveList.RemoveAt(0);
@@ -187,7 +183,7 @@ public class Bezier3DSpline : MonoBehaviour{
             autoKnot.RemoveAt(0);
             orientations.RemoveAt(0);
 
-            if (autoKnot[0] != 0) SetKnot(0, GetKnot(0));
+            SetKnot(0, knot);
         }
         else if (i == CurveCount) {
 
