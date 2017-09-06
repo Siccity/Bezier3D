@@ -260,10 +260,12 @@ public class Bezier3DSplineEditor : Editor {
             EditorGUI.BeginChangeCheck();
             Vector3 inHandleWorldPos = spline.transform.TransformPoint(knot.position + knot.handleIn);
             //inHandleWorldPos = Handles.PositionHandle(inHandleWorldPos, Tools.handleRotation);
-            inHandleWorldPos = PositionHandle(inHandleWorldPos, Tools.handleRotation,0.5f);
+            if (knot.auto == 0) inHandleWorldPos = SmallPositionHandle(inHandleWorldPos, Tools.handleRotation,0.5f,1f);
+            else inHandleWorldPos = SmallPositionHandle(inHandleWorldPos, Tools.handleRotation,0.5f,0.5f);
             if (EditorGUI.EndChangeCheck()) {
                 Undo.RecordObject(spline, "Edit Bezier Handle");
                 knot.handleIn = spline.transform.InverseTransformPoint(inHandleWorldPos) - knot.position;
+                knot.auto = 0;
                 if (mirror) knot.handleOut = -knot.handleIn;
                 spline.SetKnot(activeKnot, knot);
                 if (onUpdateSpline != null) onUpdateSpline(spline);
@@ -277,10 +279,12 @@ public class Bezier3DSplineEditor : Editor {
             EditorGUI.BeginChangeCheck();
             Vector3 outHandleWorldPos = spline.transform.TransformPoint(knot.position + knot.handleOut);
             //outHandleWorldPos = Handles.PositionHandle(outHandleWorldPos, Tools.handleRotation);
-            outHandleWorldPos = PositionHandle(outHandleWorldPos, Tools.handleRotation,0.5f);
+            if (knot.auto == 0) outHandleWorldPos = SmallPositionHandle(outHandleWorldPos, Tools.handleRotation,0.5f, 1f);
+            else outHandleWorldPos = SmallPositionHandle(outHandleWorldPos, Tools.handleRotation,0.5f, 0.5f);
             if (EditorGUI.EndChangeCheck()) {
                 Undo.RecordObject(spline, "Edit Bezier Handle");
                 knot.handleOut = spline.transform.InverseTransformPoint(outHandleWorldPos) - knot.position;
+                knot.auto = 0;
                 if (mirror) knot.handleIn = -knot.handleOut;
                 spline.SetKnot(activeKnot, knot);
                 if (onUpdateSpline != null) onUpdateSpline(spline);
@@ -293,7 +297,7 @@ public class Bezier3DSplineEditor : Editor {
         switch (e.type) {
             case EventType.KeyDown:
                 if (e.keyCode == KeyCode.Delete) {
-                    if (spline.CurveCount > 1) {
+                    if (spline.KnotCount > 2) {
                         Undo.RecordObject(spline, "Remove Bezier Point");
                         spline.RemoveKnot(activeKnot);
                         SelectKnot(-1, false);
@@ -324,7 +328,8 @@ public class Bezier3DSplineEditor : Editor {
             Handles.DrawDottedLine(a, a - b, 3f);
             if (Handles.Button(a - b, Camera.current.transform.rotation, handleScale * handleSize * 0.4f, handleScale * handleSize * 0.4f, Handles.DotHandleCap)) {
                 Undo.RecordObject(spline, "Add Bezier Point");
-                spline.InsertKnot(0, new Bezier3DSpline.Knot(curve.a - (curve.b.normalized * handleScale * 2), Vector3.zero, curve.b.normalized * 0.5f));
+                Bezier3DSpline.Knot knot = spline.GetKnot(activeKnot);
+                spline.InsertKnot(0, new Bezier3DSpline.Knot(curve.a - (curve.b.normalized * handleScale * 2), Vector3.zero, curve.b.normalized * 0.5f,knot.auto, knot.orientation));
                 if (onUpdateSpline != null) onUpdateSpline(spline);
             }
         }
@@ -340,7 +345,8 @@ public class Bezier3DSplineEditor : Editor {
             Handles.DrawDottedLine(d, d - c, 3f);
             if (Handles.Button(d - c, Camera.current.transform.rotation, handleScale * handleSize * 0.4f, handleScale * handleSize * 0.4f, Handles.DotHandleCap)) {
                 Undo.RecordObject(spline, "Add Bezier Point");
-                spline.AddKnot(new Bezier3DSpline.Knot(curve.d - (curve.c.normalized * handleScale * 2), curve.c.normalized * 0.5f, Vector3.zero));
+                Bezier3DSpline.Knot knot = spline.GetKnot(activeKnot);
+                spline.AddKnot(new Bezier3DSpline.Knot(curve.d - (curve.c.normalized * handleScale * 2), curve.c.normalized * 0.5f, Vector3.zero, knot.auto, knot.orientation));
                 SelectKnot(spline.CurveCount, false);
                 if (onUpdateSpline != null) onUpdateSpline(spline);
             }
@@ -360,7 +366,8 @@ public class Bezier3DSplineEditor : Editor {
 
             if (Handles.Button(center, Camera.current.transform.rotation, handleScale * handleSize * 0.4f, handleScale * handleSize * 0.4f, Handles.DotHandleCap)) {
                 Undo.RecordObject(spline, "Add Bezier Point");
-                spline.InsertKnot(activeKnot == 0 ? spline.CurveCount : activeKnot, new Bezier3DSpline.Knot(centerLocal, -ab, ab));
+                Bezier3DSpline.Knot knot = spline.GetKnot(activeKnot);
+                spline.InsertKnot(activeKnot == 0 ? spline.CurveCount : activeKnot, new Bezier3DSpline.Knot(centerLocal, -ab, ab, knot.auto, knot.orientation));
                 if (activeKnot == 0) SelectKnot(spline.CurveCount - 1, false);
                 if (onUpdateSpline != null) onUpdateSpline(spline);
             }
@@ -448,22 +455,29 @@ public class Bezier3DSplineEditor : Editor {
         }
     }
 
-    private Vector3 PositionHandle(Vector3 position, Quaternion rotation, float size) {
+    private Vector3 SmallPositionHandle(Vector3 position, Quaternion rotation, float size, float alpha) {
         float handleSize = HandleUtility.GetHandleSize(position) * size;
         Color color = Handles.color;
 
+        Color col;
         //X axis
-        Handles.color = Handles.xAxisColor;
+        col = Handles.xAxisColor;
+        col.a = alpha;
+        Handles.color = col;
         GUI.SetNextControlName("xAxis");
         position = Handles.Slider(position, rotation * Vector3.right, handleSize, Handles.ArrowHandleCap, EditorPrefs.GetFloat("MoveSnapX"));
 
         //Y axis
-        Handles.color = Handles.yAxisColor;
+        col = Handles.yAxisColor;
+        col.a = alpha;
+        Handles.color = col;
         GUI.SetNextControlName("yAxis");
         position = Handles.Slider(position, rotation * Vector3.up, handleSize, Handles.ArrowHandleCap, EditorPrefs.GetFloat("MoveSnapY"));
 
         //Z axis
-        Handles.color = Handles.zAxisColor;
+        col = Handles.zAxisColor;
+        col.a = alpha;
+        Handles.color = col;
         GUI.SetNextControlName("zAxis");
         position = Handles.Slider(position, rotation * Vector3.forward, handleSize, Handles.ArrowHandleCap, EditorPrefs.GetFloat("MoveSnapZ"));
         //Handles.Slider2D()
@@ -480,9 +494,9 @@ public class Bezier3DSplineEditor : Editor {
             }
             position = Handles.FreeMoveHandle(arg_1CF_0, rotation, arg_1CF_2, arg_1CF_3, Handles.<> f__mg$cache5);
         }*/
-        position = DoPlanarHandle(PlaneHandle.xyPlane, position, rotation, HandleUtility.GetHandleSize(position) * 0.2f);
-        position = DoPlanarHandle(PlaneHandle.xzPlane, position, rotation, HandleUtility.GetHandleSize(position) * 0.2f);
-        position = DoPlanarHandle(PlaneHandle.yzPlane, position, rotation, HandleUtility.GetHandleSize(position) * 0.2f);
+        position = DoPlanarHandle(PlaneHandle.xyPlane, position, rotation, HandleUtility.GetHandleSize(position) * 0.2f, alpha);
+        position = DoPlanarHandle(PlaneHandle.xzPlane, position, rotation, HandleUtility.GetHandleSize(position) * 0.2f, alpha);
+        position = DoPlanarHandle(PlaneHandle.yzPlane, position, rotation, HandleUtility.GetHandleSize(position) * 0.2f, alpha);
 
         Handles.color = color;
         return position;
@@ -494,22 +508,22 @@ public class Bezier3DSplineEditor : Editor {
         yzPlane
     }
 
-    private static Vector3 DoPlanarHandle(PlaneHandle planeID, Vector3 handlePos, Quaternion rotation, float handleSize) {
+    private static Vector3 DoPlanarHandle(PlaneHandle planeID, Vector3 handlePos, Quaternion rotation, float handleSize, float alpha) {
         int num = 0;
         int num2 = 0;
         switch (planeID) {
             case PlaneHandle.xyPlane:
-                Handles.color = Handles.zAxisColor;
+                Handles.color = new Color(Handles.zAxisColor.r, Handles.zAxisColor.g, Handles.zAxisColor.b, alpha);
                 num = 0;
                 num2 = 1;
                 break;
             case PlaneHandle.xzPlane:
-                Handles.color = Handles.yAxisColor;
+                Handles.color = new Color(Handles.yAxisColor.r, Handles.yAxisColor.g, Handles.yAxisColor.b, alpha);
                 num = 0;
                 num2 = 2;
                 break;
             case PlaneHandle.yzPlane:
-                Handles.color = Handles.xAxisColor;
+                Handles.color = new Color(Handles.xAxisColor.r, Handles.xAxisColor.g, Handles.xAxisColor.b, alpha);
                 num = 1;
                 num2 = 2;
                 break;

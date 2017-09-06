@@ -452,45 +452,21 @@ public class Bezier3DSpline : MonoBehaviour{
             }
         }
         else {
-            knot.handleOut = -AB_CB * CB.magnitude * amount;
+            if (KnotCount == 2) {
+                Vector3 left = new Vector3(AB.z, 0,-AB.x) * amount;
+                if (i == 0) {
+                    knot.handleIn = left;
+                    knot.handleOut = -left;
+                }
+                if (i == 1) {
+                    knot.handleIn = left;
+                    knot.handleOut = -left;
+                }
+            }
+            else {
             knot.handleIn = AB_CB * AB.magnitude * amount;
-        }
-    }
-
-    private void AutomateKnot(int i) {
-        float amount = autoKnot[i];
-        if (amount == 0f) return;
-
-        Knot knot = GetKnot(i);
-
-        Vector3 prevPos;
-        if (i != 0) prevPos = curves[i - 1].a;
-        else if (closed) prevPos = curves[CurveCount - 1].a;
-        else prevPos = Vector3.zero;
-
-        Vector3 nextPos;
-        if (i != KnotCount - 1) nextPos = curves[i].d;
-        else if (closed) nextPos = curves[0].a;
-        else nextPos = Vector3.zero;
-
-        Vector3 np = (knot.position - prevPos).normalized;
-        Vector3 pp = (knot.position - nextPos).normalized;
-        //Vector3 mp = Vector3.Lerp(np, pp, 0.5f);
-        //Vector3 norm = Vector3.Cross(np, pp).normalized;
-        //Quaternion rot = Quaternion.AngleAxis(90, norm);
-        //mp = rot * mp;
-        Vector3 mp = pp - np;
-
-        Vector3 ab = mp.normalized * amount;
-        if (i == 0) {
-            if (closed) curves[CurveCount - 1] = new Bezier3DCurve(curves[CurveCount - 1].a, curves[CurveCount - 1].b, ab, knot.position, cacheDensity);
-            curves[0] = new Bezier3DCurve(knot.position, -ab, curves[0].c, curves[0].d, cacheDensity);
-        } else if (i == KnotCount-1) {
-            if (closed) curves[CurveCount - 1] = new Bezier3DCurve(knot.position, -ab, curves[CurveCount - 1].c, curves[CurveCount - 1].d, cacheDensity);
-            curves[i - 1] = new Bezier3DCurve(curves[i - 1].a, curves[i - 1].b, ab, knot.position, cacheDensity);
-        } else {
-            curves[i] = new Bezier3DCurve(knot.position, -ab, curves[i].c, curves[i].d, cacheDensity);
-            curves[i - 1] = new Bezier3DCurve(curves[i - 1].a, curves[i - 1].b, ab, knot.position, cacheDensity);
+            knot.handleOut = -AB_CB * CB.magnitude * amount;
+            }
         }
     }
 
