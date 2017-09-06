@@ -441,7 +441,6 @@ public class Bezier3DSplineEditor : Editor {
             Quaternion rot = spline.GetOrientation(dist);
             Vector3 forwardFast = spline.GetForwardFast(dist);
             Vector3 up = rot * Vector3.up;
-            Vector3 fwd = rot * Vector3.forward;
             Handles.color = Color.white;
             Handles.DrawLine(point, point + up);
             Handles.color = Handles.zAxisColor;

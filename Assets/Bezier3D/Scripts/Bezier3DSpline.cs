@@ -338,6 +338,7 @@ public class Bezier3DSpline : MonoBehaviour{
 
         //Find preceding rotation
         for (int i = Mathf.Min((int)t, CurveCount); i >= 0; i--) {
+            i = (int)Mathf.Repeat(i, KnotCount - 1);
             if (orientations[i].HasValue) {
                 rot_a = orientations[i].Value;
                 rot_b = orientations[i].Value;
