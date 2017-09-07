@@ -111,9 +111,19 @@ public class Bezier3DSplineEditor : Editor {
             if (auto) {
                 EditorGUILayout.Space();
                 EditorGUI.BeginChangeCheck();
+                knot.position = EditorGUILayout.Vector3Field("Position", knot.position);
+                if (EditorGUI.EndChangeCheck()) {
+                    Undo.RecordObject(spline, "Edit Bezier Point");
+                    spline.SetKnot(activeKnot, knot);
+                    if (onUpdateSpline != null) onUpdateSpline(spline);
+                    SceneView.RepaintAll();
+                }
+                EditorGUI.BeginChangeCheck();
                 knot.auto = EditorGUILayout.FloatField("Distance", knot.auto);
                 if (EditorGUI.EndChangeCheck()) {
+                    Undo.RecordObject(spline, "Edit Bezier Point");
                     spline.SetKnot(activeKnot, knot);
+                    if (onUpdateSpline != null) onUpdateSpline(spline);
                     SceneView.RepaintAll();
                 }
             } else {
@@ -121,21 +131,27 @@ public class Bezier3DSplineEditor : Editor {
                 EditorGUI.BeginChangeCheck();
                 knot.position = EditorGUILayout.Vector3Field("Position", knot.position);
                 if (EditorGUI.EndChangeCheck()) {
+                    Undo.RecordObject(spline, "Edit Bezier Point");
                     spline.SetKnot(activeKnot, knot);
+                    if (onUpdateSpline != null) onUpdateSpline(spline);
                     SceneView.RepaintAll();
                 }
                 EditorGUI.BeginChangeCheck();
                 knot.handleIn = EditorGUILayout.Vector3Field("Handle in", knot.handleIn);
                 if (EditorGUI.EndChangeCheck()) {
+                    Undo.RecordObject(spline, "Edit Bezier Handle");
                     if (mirror) knot.handleOut = -knot.handleIn;
                     spline.SetKnot(activeKnot, knot);
+                    if (onUpdateSpline != null) onUpdateSpline(spline);
                     SceneView.RepaintAll();
                 }
                 EditorGUI.BeginChangeCheck();
                 knot.handleOut = EditorGUILayout.Vector3Field("Handle out", knot.handleOut);
                 if (EditorGUI.EndChangeCheck()) {
+                    Undo.RecordObject(spline, "Edit Bezier Handle");
                     if (mirror) knot.handleIn = -knot.handleOut;
                     spline.SetKnot(activeKnot, knot);
+                    if (onUpdateSpline != null) onUpdateSpline(spline);
                     SceneView.RepaintAll();
                 }
             }
