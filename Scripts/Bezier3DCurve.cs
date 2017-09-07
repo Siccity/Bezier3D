@@ -28,7 +28,7 @@ public class Bezier3DCurve {
 
     public AnimationCurve cache { get { return _cache; } }
     [SerializeField] private AnimationCurve _cache;
-    [SerializeField] private Vector3AnimationCurve _tangentCache;
+    [SerializeField] private Bezier3D.Vector3AnimationCurve _tangentCache;
 
     /// <summary> Constructor </summary>
 	public Bezier3DCurve(Vector3 a, Vector3 b, Vector3 c, Vector3 d, int steps) {
@@ -62,8 +62,8 @@ public class Bezier3DCurve {
     #endregion
 
     #region Private methods
-    private static Vector3AnimationCurve GetTangentCache(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, int steps) {
-        Vector3AnimationCurve curve = new Vector3AnimationCurve(); //time = distance, value = time
+    private static Bezier3D.Vector3AnimationCurve GetTangentCache(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, int steps) {
+        Bezier3D.Vector3AnimationCurve curve = new Bezier3D.Vector3AnimationCurve(); //time = distance, value = time
         float delta = 1f / steps;
         for (int i = 0; i < steps+1; i++) {
             curve.AddKey(delta * i, GetForward(p0, p1, p2, p3, delta * i).normalized);
