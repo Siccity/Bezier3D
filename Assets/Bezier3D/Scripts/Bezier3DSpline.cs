@@ -299,6 +299,17 @@ public class Bezier3DSpline : MonoBehaviour{
         _totalLength = GetTotalLength();
 
     }
+
+    /// <summary> Flip the spline </summary>
+    public void Flip() {
+        Bezier3DCurve[] curves = new Bezier3DCurve[CurveCount];
+        for (int i = 0; i < CurveCount; i++) {
+            curves[CurveCount - 1 - i] = new Bezier3DCurve(this.curves[i].d, this.curves[i].c, this.curves[i].b, this.curves[i].a, cacheDensity);
+        }
+        this.curves = curves;
+        autoKnot.Reverse();
+        orientations.Reverse();
+    }
     #endregion
 
     #endregion

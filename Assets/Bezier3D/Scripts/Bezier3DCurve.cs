@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Immutable Bezier curve between two points
-/// </summary>
+/// <summary> Immutable Bezier curve between two points </summary>
 [System.Serializable]
 public class Bezier3DCurve {
 

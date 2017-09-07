@@ -36,8 +36,6 @@ public class Bezier3DSplineEditor : Editor {
 
         ValidateSelected();
 
-        Hotkeys();
-
         EditorGUILayout.LabelField("Spline settings");
 
         EditorGUI.indentLevel = 1;
@@ -58,6 +56,18 @@ public class Bezier3DSplineEditor : Editor {
             if (onUpdateSpline != null) onUpdateSpline(spline);
             SceneView.RepaintAll();
         }
+
+        Rect position = EditorGUILayout.GetControlRect(false, 19f, EditorStyles.numberField);
+        position.xMin += EditorGUIUtility.labelWidth;
+
+        Rect flipRect = new Rect(position.x, position.y, position.width, position.height);
+        if (GUI.Button(flipRect, new GUIContent("Flip", "Flip spline direction."))) {
+            spline.Flip();
+            if (onUpdateSpline != null) onUpdateSpline(spline);
+            SceneView.RepaintAll();
+        }
+
+
         EditorGUI.indentLevel = 0;
 
         EditorGUILayout.Space();
@@ -66,7 +76,7 @@ public class Bezier3DSplineEditor : Editor {
             EditorGUI.indentLevel = 1;
             Bezier3DSpline.Knot knot = spline.GetKnot(activeKnot);
 
-            Rect position = EditorGUILayout.GetControlRect(false, 19f, EditorStyles.numberField);
+            position = EditorGUILayout.GetControlRect(false, 19f, EditorStyles.numberField);
             position.xMin += EditorGUIUtility.labelWidth;
 
             EditorGUI.BeginChangeCheck();
@@ -164,10 +174,19 @@ public class Bezier3DSplineEditor : Editor {
             case EventType.ValidateCommand:
                 if (e.commandName == "UndoRedoPerformed") if (onUpdateSpline != null) onUpdateSpline(spline);
                 break;
+            case EventType.KeyDown:
+                if (e.keyCode == KeyCode.I) {
+                    if ((e.modifiers & (EventModifiers.Control | EventModifiers.Command)) != 0) {
+                        spline.Flip();
+                    }
+                }
+                break;
         }
     }
 
     void OnSceneGUI() {
+        Hotkeys();
+
         Handles.BeginGUI();
         Color defaultColor = GUI.contentColor;
         GUILayout.BeginArea(new Rect(guiOffset, new Vector2(100, 200)));
@@ -183,7 +202,7 @@ public class Bezier3DSplineEditor : Editor {
         ValidateSelected();
         DrawUnselectedKnots();
 
-        if (visualizeOrientation) VisualizeOrientation();
+        if (visualizeOrientation) VisualizeOrientations();
         if (activeKnot != -1) {
             if (selectedKnots.Count == 1) {
                 DrawSelectedSplitters();
@@ -458,16 +477,16 @@ public class Bezier3DSplineEditor : Editor {
         Repaint();
     }
 
-    private void VisualizeOrientation() {
+    private void VisualizeOrientations() {
         for (float dist = 0f; dist < spline.totalLength; dist += 1) {
             Vector3 point = spline.GetPoint(dist);
-            Quaternion rot = spline.GetOrientation(dist);
-            Vector3 forwardFast = spline.GetForwardFast(dist);
+            Quaternion rot = spline.GetOrientationFast(dist);
             Vector3 up = rot * Vector3.up;
             Handles.color = Color.white;
             Handles.DrawLine(point, point + up);
             Handles.color = Handles.zAxisColor;
-            Handles.DrawLine(point, point + forwardFast.normalized);
+            Vector3 forward = rot * Vector3.forward;
+            Handles.DrawLine(point, point + forward);
         }
     }
 
