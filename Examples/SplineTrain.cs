@@ -14,10 +14,10 @@ public class SplineTrain : MonoBehaviour {
     [ContextMenu("TEST")]
     void Test( ) {
         for (int i = 0; i < 100000; i++) {
-            spline.GetForwardLocal(startPos);
+            spline.GetOrientationLocal(startPos);
         }
         for (int i = 0; i < 100000; i++) {
-            spline.GetForwardLocalFast(startPos);
+            spline.GetOrientationLocalFast(startPos);
         }
     }
     void Start() {
@@ -46,11 +46,11 @@ public class SplineTrain : MonoBehaviour {
         }
         if (distance) {
             transform.position = spline.GetPoint(pos);
-            transform.rotation = spline.GetOrientation(pos);
+            transform.rotation = spline.GetOrientationFast(pos);
         }
         else {
             transform.position = spline.GetPoint(spline.DistanceToTime(pos));
-            transform.rotation = spline.GetOrientation(spline.DistanceToTime(pos));
+            transform.rotation = spline.GetOrientationFast(spline.DistanceToTime(pos));
         }
     }
 }

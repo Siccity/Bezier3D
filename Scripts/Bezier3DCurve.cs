@@ -1,12 +1,10 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
+using System;
+using Bezier3D;
 
 /// <summary> Immutable Bezier curve between two points </summary>
 [System.Serializable]
 public class Bezier3DCurve {
-
-
     /// <summary> Start point </summary>
     public Vector3 a { get { return _a; } }
     [SerializeField] private Vector3 _a;
@@ -19,6 +17,8 @@ public class Bezier3DCurve {
     /// <summary> End point </summary>
     public Vector3 d { get { return _d; } }
     [SerializeField] private Vector3 _d;
+    /// <summary> Number of steps in the cache. More steps = more accurate approximation </summary>
+    public int CacheSteps { get { return _cache.length; } }
 
     /// <summary> B and C in world coordinates </summary>
     [SerializeField] private Vector3 _B, _C;
@@ -28,42 +28,81 @@ public class Bezier3DCurve {
 
     public AnimationCurve cache { get { return _cache; } }
     [SerializeField] private AnimationCurve _cache;
-    [SerializeField] private Bezier3D.Vector3AnimationCurve _tangentCache;
+    public AnimationCurve reverseCache { get { return _reverseCache; } }
+    [SerializeField] private AnimationCurve _reverseCache;
+    [SerializeField] private Vector3AnimationCurve _tangentCache;
+    [SerializeField] private Vector3AnimationCurve _upCache;
+    //[SerializeField] private QuaternionAnimationCurve _orientationCache;
+
 
     /// <summary> Constructor </summary>
-	public Bezier3DCurve(Vector3 a, Vector3 b, Vector3 c, Vector3 d, int steps) {
+    /// <param name="a">Start Point</param>
+    /// <param name="b">First handle. Local to start point</param>
+    /// <param name="c">Second handle. Local to end point</param>
+    /// <param name="d">End point</param>
+    /// <param name="steps">Number of steps in the cache. More steps = more accurate approximation</param>
+    public Bezier3DCurve(Vector3 a, Vector3 b, Vector3 c, Vector3 d, int steps) {
         _a = a;
         _b = b;
         _c = c;
         _d = d;
         _B = a + b;
         _C = d + c;
-        _cache = GetDistanceCache(a,a+b,c+d,d,steps);
+        GetDistanceCache(a,a+b,c+d,d,steps, out _cache, out _reverseCache);
         _tangentCache = GetTangentCache(a, a + b, c + d, d, steps);
         _length = _cache.keys[_cache.keys.Length - 1].time;
     }
 
     #region Public methods
+    /// <summary> Get point on curve in local coordinates </summary>
+    /// <param name="t">Time</param>
     public Vector3 GetPoint(float t) {
 		return GetPoint(_a, _B, _C, _d, t);
 	}
 
+    /// <summary> Get tangent in local coordinates </summary>
+    /// <param name="t">Time</param>
     public Vector3 GetForward(float t) {
         return GetForward(_a, _B, _C, _d, t);
     }
 
+    /// <summary> Approximate tangent in local coordinates </summary>
+    /// <param name="t">Time</param>
     public Vector3 GetForwardFast(float t) {
         return _tangentCache.Evaluate(t);
+    }
+
+    /// <summary> Approximate up vector in local coordinates </summary>
+    /// <param name="t">Time</param>
+    public Vector3 GetUpFast(float t) {
+        return _upCache == null ? Vector3.up : _upCache.Evaluate(t);
+
+    }
+
+    /// <summary> Approximate orientation in local coordinates </summary>
+    /// <param name="t">Time</param>
+    public Quaternion GetOrientationFast(float t) {
+        Vector3 up = GetUpFast(t);
+        Vector3 forward = GetForwardFast(t);
+        return Quaternion.LookRotation(forward, up);
     }
 
     public float Dist2Time(float distance) {
         return _cache.Evaluate(distance);
     }
+
+    public float Time2Dist(float t) {
+        return _reverseCache.Evaluate(t);
+    }
+
+    public void SetUpCache(Vector3AnimationCurve upCache) {
+        _upCache = upCache;
+    }
     #endregion
 
     #region Private methods
-    private static Bezier3D.Vector3AnimationCurve GetTangentCache(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, int steps) {
-        Bezier3D.Vector3AnimationCurve curve = new Bezier3D.Vector3AnimationCurve(); //time = distance, value = time
+    private static Vector3AnimationCurve GetTangentCache(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, int steps) {
+        Vector3AnimationCurve curve = new Vector3AnimationCurve();
         float delta = 1f / steps;
         for (int i = 0; i < steps+1; i++) {
             curve.AddKey(delta * i, GetForward(p0, p1, p2, p3, delta * i).normalized);
@@ -71,8 +110,9 @@ public class Bezier3DCurve {
         return curve;
     }
 
-    private static AnimationCurve GetDistanceCache(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, int steps) {
-        AnimationCurve curve = new AnimationCurve(); //time = distance, value = time
+    private static void GetDistanceCache(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, int steps, out AnimationCurve cache, out AnimationCurve reverseCache) {
+        cache = new AnimationCurve(); //time = distance, value = time
+        reverseCache = new AnimationCurve(); //time = time, value = distance
         Vector3 prevPos = Vector3.zero;
         float totalLength = 0f;
         for (int i = 0; i <= steps; i++) {
@@ -84,7 +124,8 @@ public class Bezier3DCurve {
             if (i == 0) {
                 //Add point at (0,0)
                 prevPos = GetPoint(p0, p1, p2, p3, 0);
-                curve.AddKey(0, 0);
+                cache.AddKey(0, 0);
+                reverseCache.AddKey(0, 0);
             }
             //Per step
             else {
@@ -95,14 +136,12 @@ public class Bezier3DCurve {
                 //Save current position for next iteration
                 prevPos = newPos;
                 //Cache data
-                curve.AddKey(totalLength, t);
+                cache.AddKey(totalLength, t);
+                reverseCache.AddKey(t, totalLength);
             }
         }
-        return curve;
     }
-
     public static Vector3 GetPoint(Vector3 a, Vector3 b, Vector3 c, Vector3 d, float t) {
-		t = Mathf.Clamp01(t);
 		float oneMinusT = 1f - t;
 		return
 			oneMinusT * oneMinusT * oneMinusT * a +
@@ -111,7 +150,6 @@ public class Bezier3DCurve {
 			t * t * t * d;
 	}
     private static Vector3 GetForward(Vector3 a, Vector3 b, Vector3 c, Vector3 d, float t) { //Also known as first derivative
-		t = Mathf.Clamp01(t);
 		float oneMinusT = 1f - t;
 		return
 			3f * oneMinusT * oneMinusT * (b - a) +

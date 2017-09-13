@@ -481,11 +481,13 @@ public class Bezier3DSplineEditor : Editor {
         for (float dist = 0f; dist < spline.totalLength; dist += 1) {
             Vector3 point = spline.GetPoint(dist);
             Quaternion rot = spline.GetOrientationFast(dist);
+
             Vector3 up = rot * Vector3.up;
             Handles.color = Color.white;
             Handles.DrawLine(point, point + up);
-            Handles.color = Handles.zAxisColor;
+
             Vector3 forward = rot * Vector3.forward;
+            Handles.color = Handles.zAxisColor;
             Handles.DrawLine(point, point + forward);
         }
     }
@@ -610,6 +612,4 @@ public class Bezier3DSplineEditor : Editor {
         }
         return result;
     }
-
-
 }

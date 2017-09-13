@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System.Collections;
+using System;
 
 namespace Bezier3D {
     /// <summary>
@@ -29,68 +31,70 @@ namespace Bezier3D {
     /// </summary>
     [System.Serializable]
     public class QuaternionAnimationCurve {
-        [SerializeField]
-        private AnimationCurve
-            xQ = new AnimationCurve(),
-            yQ = new AnimationCurve(),
-            zQ = new AnimationCurve(),
-            wQ = new AnimationCurve();
 
-        /// <summary>
-        /// The number of keys in the curve (Read Only)
-        /// </summary>
-        public int length { get { return xQ.length; } }
+        private Keyframe[] keys = new Keyframe[0];
+
+        private struct Keyframe : IComparable<Keyframe> {
+            public Quaternion value;
+            public float time;
+
+            public Keyframe(float time, Quaternion value) {
+                this.time = time;
+                this.value = value;
+            }
+
+            public int CompareTo(Keyframe other) {
+                return time.CompareTo(other.time);
+            }
+        }
+
+        /// <summary> The number of keys in the curve (Read Only) </summary>
+        public int length { get { return keys.Length; } }
 
         public Quaternion Evaluate(float time) {
-            return new Quaternion(xQ.Evaluate(time), yQ.Evaluate(time), zQ.Evaluate(time), wQ.Evaluate(time));
-        }
+            if (keys.Length == 0) return Quaternion.identity;
 
-        public QuaternionAnimationCurve() {
-
-        }
-        public QuaternionAnimationCurve(Serializable serialized) {
-            xQ = ExtendedAnimationCurves.Deserialize(serialized.xT, serialized.xV);
-            yQ = ExtendedAnimationCurves.Deserialize(serialized.yT, serialized.yV);
-            zQ = ExtendedAnimationCurves.Deserialize(serialized.zT, serialized.zV);
-            wQ = ExtendedAnimationCurves.Deserialize(serialized.wT, serialized.wV);
-        }
-        public void AddKey(float time, Quaternion value) {
-            xQ.AddKey(time, value.x);
-            yQ.AddKey(time, value.y);
-            zQ.AddKey(time, value.z);
-            wQ.AddKey(time, value.w);
-        }
-
-        /// <summary>
-        /// Gets the rotation of the last key
-        /// </summary>
-        public Quaternion EvaluateEnd() {
-            return GetKeyValue(xQ.length - 1);
-        }
-
-        public float GetKeyTime(int keyIndex) {
-            return wQ.keys[keyIndex].time;
-        }
-
-        public Quaternion GetKeyValue(int keyIndex) {
-            return new Quaternion(xQ.keys[keyIndex].value, yQ.keys[keyIndex].value, zQ.keys[keyIndex].value, wQ.keys[keyIndex].value);
-        }
-
-        [System.Serializable]
-        public class Serializable {
-            public Serializable(QuaternionAnimationCurve curve) {
-                curve.xQ.Serialize(out xT, out xV);
-                curve.yQ.Serialize(out yT, out yV);
-                curve.zQ.Serialize(out zT, out zV);
-                curve.wQ.Serialize(out wT, out wV);
+            int len = length;
+            Quaternion a = keys[0].value;
+            Quaternion b = keys[0].value;
+            for (int i = 0; i < len; i++) {
+                Quaternion c = keys[i].value;
+                if (keys[i].time > time) {
+                    if (i < len-1) {
+                        float t = Mathf.InverseLerp(keys[i].time, keys[i+1].time, time);
+                        Quaternion d = keys[i+1].value;
+                        return Quaternion.Lerp(
+                            Quaternion.Lerp(
+                                Quaternion.Lerp(a, b, t),
+                                Quaternion.Lerp(b, c, t),
+                                t),
+                            Quaternion.Lerp(
+                                Quaternion.Lerp(b,c,t),
+                                Quaternion.Lerp(c,d,t),
+                                t),
+                            t);
+                    }
+                }
+                a = b;
+                b = c;
             }
-            public float[] xT, xV, yT, yV, zT, zV, wT, wV;
+            return keys[keys.Length-1].value;
+        }
+
+        public void AddKey(float time, Quaternion value) {
+            List<Keyframe> qList = new List<Keyframe>(keys);
+            qList.Add(new Keyframe(time, value));
+            qList.Sort();
+            keys = qList.ToArray();
+        }
+
+        /// <summary> Gets the rotation of the last key </summary>
+        public Quaternion EvaluateEnd() {
+            return keys[keys.Length - 1].value;
         }
     }
 
-    /// <summary>
-    /// Similar to AnimationCurve, except all values are constant. No smoothing applied between keys
-    /// </summary>
+    /// <summary> Similar to AnimationCurve, except all values are constant. No smoothing applied between keys </summary>
     [System.Serializable]
     public class ConstantAnimationCurve {
         [SerializeField]
@@ -146,9 +150,7 @@ namespace Bezier3D {
         }
     }
 
-    /// <summary>
-    /// Animation curve which stores quaternions, and can evaluate smoothed values in between keyframes
-    /// </summary>
+    /// <summary> Animation curve which stores quaternions, and can evaluate smoothed values in between keyframes </summary>
     [System.Serializable]
     public class Vector3AnimationCurve {
         [SerializeField]
@@ -157,9 +159,7 @@ namespace Bezier3D {
             yV = new AnimationCurve(),
             zV = new AnimationCurve();
 
-        /// <summary>
-        /// The number of keys in the curve (Read Only)
-        /// </summary>
+        /// <summary> The number of keys in the curve (Read Only) </summary>
         public int length { get { return xV.length; } }
 
         public Vector3 Evaluate(float time) {
@@ -172,9 +172,7 @@ namespace Bezier3D {
             zV.AddKey(time, value.z);
         }
 
-        /// <summary>
-        /// Gets the rotation of the last key
-        /// </summary>
+        /// <summary> Gets the rotation of the last key </summary>
         public Vector3 EvaluateEnd() {
             return GetKeyValue(xV.length - 1);
         }
@@ -188,21 +186,6 @@ namespace Bezier3D {
         }
         public Vector3AnimationCurve() {
 
-        }
-        public Vector3AnimationCurve(Serializable serialized) {
-            xV = ExtendedAnimationCurves.Deserialize(serialized.xT, serialized.xV);
-            yV = ExtendedAnimationCurves.Deserialize(serialized.yT, serialized.yV);
-            zV = ExtendedAnimationCurves.Deserialize(serialized.zT, serialized.zV);
-        }
-
-        [System.Serializable]
-        public class Serializable {
-            public Serializable(Vector3AnimationCurve curve) {
-                curve.xV.Serialize(out xT, out xV);
-                curve.yV.Serialize(out yT, out yV);
-                curve.zV.Serialize(out zT, out zV);
-            }
-            public float[] xT, xV, yT, yV, zT, zV;
         }
     }
 }

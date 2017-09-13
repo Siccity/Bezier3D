@@ -4,6 +4,7 @@ using UnityEngine;
 using System;
 using System.Linq;
 using UnityEngine.Serialization;
+using Bezier3D;
 
 [AddComponentMenu("Miscellaneous/Bezier Spline")]
 public class Bezier3DSpline : MonoBehaviour{
@@ -24,7 +25,6 @@ public class Bezier3DSpline : MonoBehaviour{
     /// <summary> Automatic knots don't have handles. Instead they have a percentage and adjust their handles accordingly. A percentage of 0 indicates that this is not automatic </summary>
     [SerializeField] protected List<float> autoKnot = new List<float>() { 0, 0 };
     [SerializeField] protected List<NullableQuaternion> orientations = new List<NullableQuaternion>() { new NullableQuaternion(null), new NullableQuaternion(null) };
-    [SerializeField] protected Vector3[] tangentCache = new Vector3[0];
 
     #region Public methods
 
@@ -43,6 +43,17 @@ public class Bezier3DSpline : MonoBehaviour{
             }
         }
         return 1f;
+    }
+
+    public float TimeToDistance(float t) {
+        t *= CurveCount;
+        int c = 0;
+        while(t >= 1) {
+            ++c;
+            --t;
+        }
+        if (c >= curves.Length) return totalLength;
+        else return curves[c].Time2Dist(t);
     }
 
     /// <summary> Get <see cref="Bezier3DCurve"/> by index </summary>
@@ -73,7 +84,7 @@ public class Bezier3DSpline : MonoBehaviour{
 
     /// <summary> Return forward vector at set distance along the <see cref="Bezier3DSpline"/> in local coordinates. </summary>
     public Vector3 GetForwardLocal(float dist) {
-        Bezier3DCurve curve = GetCurveDistance(dist, out dist);
+        Bezier3DCurve curve = GetCurveDistance(ref dist);
         return curve.GetForward(curve.Dist2Time(dist));
     }
 
@@ -84,7 +95,7 @@ public class Bezier3DSpline : MonoBehaviour{
 
     /// <summary> Return forward vector at set distance along the <see cref="Bezier3DSpline"/> in local coordinates. Uses approximation. </summary>
     public Vector3 GetForwardLocalFast(float dist) {
-        Bezier3DCurve curve = GetCurveDistance(dist, out dist);
+        Bezier3DCurve curve = GetCurveDistance(ref dist);
         return curve.GetForwardFast(curve.Dist2Time(dist));
     }
     #endregion
@@ -104,28 +115,23 @@ public class Bezier3DSpline : MonoBehaviour{
     #region Public get: Point
     /// <summary> Return up vector at set distance along the <see cref="Bezier3DSpline"/>. </summary>
     public Vector3 GetPoint(float dist) {
-        Bezier3DCurve curve = GetCurveDistance(dist, out dist);
-        return transform.TransformPoint(curve.GetPoint(curve.Dist2Time(dist)));
+        return transform.TransformPoint(GetPointLocal(dist));
     }
 
     /// <summary> Return point at lerped position where 0 = start, 1 = end </summary>
     public Vector3 GetPointLocal(float dist) {
-        Bezier3DCurve curve = GetCurveDistance(dist, out dist);
+        Bezier3DCurve curve = GetCurveDistance(ref dist);
         return curve.GetPoint(curve.Dist2Time(dist));
     }
     #endregion
 
     #region Public get: Orientation
     public Quaternion GetOrientation(float dist) {
-        Vector3 forward = GetForward(dist);
-        Vector3 up = GetUp(dist, forward, false);
-        return Quaternion.LookRotation(forward, up);
+        return transform.rotation * GetOrientationLocal(dist);
     }
 
     public Quaternion GetOrientationFast(float dist) {
-        Vector3 forward = GetForwardFast(dist);
-        Vector3 up = GetUp(dist, forward, false);
-        return Quaternion.LookRotation(forward, up);
+        return transform.rotation * GetOrientationLocalFast(dist);
     }
 
     public Quaternion GetOrientationLocal(float dist) {
@@ -135,9 +141,8 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 
     public Quaternion GetOrientationLocalFast(float dist) {
-        Vector3 forward = GetForwardLocalFast(dist);
-        Vector3 up = GetUp(dist, forward, true);
-        return Quaternion.LookRotation(forward, up);
+        Bezier3DCurve curve = GetCurveDistance(ref dist);
+        return curve.GetOrientationFast(curve.Dist2Time(dist));
     }
     #endregion
 
@@ -168,6 +173,7 @@ public class Bezier3DSpline : MonoBehaviour{
         _cacheDensity = steps;
         for (int i = 0; i < CurveCount; i++) {
             curves[i] = new Bezier3DCurve(curves[i].a, curves[i].b, curves[i].c, curves[i].d, _cacheDensity);
+            curves[i].SetUpCache(GetUpCache(i));
         }
         _totalLength = GetTotalLength();
     }
@@ -265,6 +271,7 @@ public class Bezier3DSpline : MonoBehaviour{
                 if (preKnotPreCurveIndex != -1) {
                     AutomateHandles(preKnotIndex, ref preKnot, curves[preKnotPreCurveIndex].a, knot.position);
                     curves[preKnotPreCurveIndex] = new Bezier3DCurve(curves[preKnotPreCurveIndex].a, curves[preKnotPreCurveIndex].b, preKnot.handleIn, preKnot.position, cacheDensity);
+                    curves[preKnotPreCurveIndex].SetUpCache(GetUpCache(preKnotPreCurveIndex));
                 }
                 else {
                     AutomateHandles(preKnotIndex, ref preKnot, Vector3.zero, knot.position);
@@ -281,6 +288,7 @@ public class Bezier3DSpline : MonoBehaviour{
                 if (postKnotPostCurveIndex != -1) {
                     AutomateHandles(postKnotIndex, ref postKnot, knot.position, curves[postKnotPostCurveIndex].d);
                     curves[postKnotPostCurveIndex] = new Bezier3DCurve(postKnot.position, postKnot.handleOut, curves[postKnotPostCurveIndex].c, curves[postKnotPostCurveIndex].d, cacheDensity);
+                    curves[postKnotPostCurveIndex].SetUpCache(GetUpCache(postKnotPostCurveIndex));
                 }
                 else {
                     AutomateHandles(postKnotIndex, ref postKnot, knot.position, Vector3.zero);
@@ -293,8 +301,14 @@ public class Bezier3DSpline : MonoBehaviour{
         GetCurveIndicesForKnot(i, out preCurveIndex, out postCurveIndex);
 
         //Adjust curves in direct contact with the knot
-        if (preCurveIndex != -1) curves[preCurveIndex] = new Bezier3DCurve(preKnot.position, preKnot.handleOut, knot.handleIn, knot.position, cacheDensity);
-        if (postCurveIndex != -1) curves[postCurveIndex] = new Bezier3DCurve(knot.position, knot.handleOut, postKnot.handleIn, postKnot.position, cacheDensity);
+        if (preCurveIndex != -1) {
+            curves[preCurveIndex] = new Bezier3DCurve(preKnot.position, preKnot.handleOut, knot.handleIn, knot.position, cacheDensity);
+            curves[preCurveIndex].SetUpCache(GetUpCache(preCurveIndex));
+        }
+        if (postCurveIndex != -1) {
+            curves[postCurveIndex] = new Bezier3DCurve(knot.position, knot.handleOut, postKnot.handleIn, postKnot.position, cacheDensity);
+            curves[postCurveIndex].SetUpCache(GetUpCache(postCurveIndex));
+        }
 
         _totalLength = GetTotalLength();
 
@@ -336,6 +350,35 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 
     #region Private methods
+    /*private QuaternionAnimationCurve GetOrientationCache(int curveIndex) {
+        QuaternionAnimationCurve orientationCache = new QuaternionAnimationCurve();
+        Bezier3DCurve curve = GetCurve(curveIndex);
+        float startT = curveIndex;
+        float delta = 1f / curve.CacheSteps;
+        for (int i = 0; i <= curve.CacheSteps; i++) {
+            float d = delta * i;
+            Vector3 forward = curve.GetForward(d);
+            Vector3 up = Vector3.ProjectOnPlane(Vector3.up,forward).normalized; //((GetUp(TimeToDistance();
+            orientationCache.AddKey(d, Quaternion.LookRotation(forward,up));
+        }
+        return orientationCache;
+    }*/
+
+    private Vector3AnimationCurve GetUpCache(int curveIndex) {
+        Vector3AnimationCurve upCache = new Vector3AnimationCurve();
+        Bezier3DCurve curve = GetCurve(curveIndex);
+        float startT = curveIndex;
+        float delta = 1f / curve.CacheSteps;
+        for (int i = 0; i <= curve.CacheSteps; i++) {
+            float d = delta * i;
+            Vector3 forward = curve.GetForward(d);
+            Vector3 up = GetUp(TimeToDistance(d));
+            //Vector3 up = Vector3.ProjectOnPlane(Vector3.up, forward).normalized; //((GetUp(TimeToDistance();
+            upCache.AddKey(d, up);
+        }
+        return upCache;
+    }
+
     private Vector3 GetUp(float dist, Vector3 tangent, bool local) {
         float t = DistanceToTime(dist);
         t *= CurveCount;
@@ -408,17 +451,37 @@ public class Bezier3DSpline : MonoBehaviour{
         return curves[CurveCount - 1];
     }
 
-    private Bezier3DCurve GetCurveDistance(float splineDist, out float curveDist) {
-        for (int i = 0; i < CurveCount; i++) {
-            if (curves[i].length < splineDist) splineDist -= curves[i].length;
+    public Bezier3DCurve GetCurveDistance(ref float distance) {
+        int len = CurveCount;
+        for (int i = 0; i < len; i++) {
+            float l = curves[i].length;
+            if (distance >= l) distance -= l;
+            else return curves[i];
+        }
+        distance = curves[len - 1].length;
+        return curves[len-1];
+    }
+
+    /*public Bezier3DCurve GetCurveDistancePackedSplit(ref float distance) {
+        float splitlen = searchBlocks.Length;
+        int startBlock = 0;
+        for (int i = 0; i < splitlen; i++) {
+            if (distance > searchBlocks[i]) {
+
+                startBlock = i;
+            }
             else {
-                curveDist = splineDist;
-                return curves[i];
+                break;
             }
         }
-        curveDist = curves[CurveCount -1].length;
-        return curves[CurveCount - 1];
-    }
+        distance -= searchBlocks[startBlock];
+        for (int i = startBlock * 100; i < (startBlock * 100) + 100; i++) {
+            float l = packedLengths[i];
+            if (distance >= l) distance -= l;
+            else return curves[i];
+        }
+        return curves[;
+    }*/
 
     /// <summary> Automate handles based on previous and next point positions </summary>
     private void AutomateHandles(int i, ref Knot knot) {
