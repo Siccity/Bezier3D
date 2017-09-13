@@ -512,19 +512,27 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 #if UNITY_EDITOR
     void OnDrawGizmos() {
+        //Set color depending on selection
         if (Array.IndexOf(UnityEditor.Selection.gameObjects, gameObject) >= 0) {
             Gizmos.color = Color.yellow;
         } else  Gizmos.color = new Color(1, 0.6f, 0f);
+
+        //Loop through each curve in spline
         for (int i = 0; i < CurveCount; i++) {
             Bezier3DCurve curve = GetCurve(i);
+
+            //Get curve in world space
             Vector3 a, b, c, d;
             a = transform.TransformPoint(curve.a);
             b = transform.TransformPoint(curve.b + curve.a);
             c = transform.TransformPoint(curve.c + curve.d);
             d = transform.TransformPoint(curve.d);
+
+            int segments = 50;
+            float spacing = 1f / segments;
             Vector3 prev = Bezier3DCurve.GetPoint(a, b, c, d, 0f);
-            for (float t = 0f; t < 1f; t += 0.02f) {
-                Vector3 cur = Bezier3DCurve.GetPoint(a, b, c, d, t + 0.02f);
+            for (int k = 0; k <= segments; k++) {
+                Vector3 cur = Bezier3DCurve.GetPoint(a, b, c, d, k * spacing);
                 Gizmos.DrawLine(prev, cur);
                 prev = cur;
             }
