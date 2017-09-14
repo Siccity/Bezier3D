@@ -46,7 +46,8 @@ public class SplineTrain : MonoBehaviour {
         }
         if (distance) {
             transform.position = spline.GetPoint(pos);
-            transform.rotation = spline.GetOrientationFast(pos);
+            //transform.rotation = spline.GetOrientationFast(pos);
+            transform.rotation = spline.GetOrientation(pos);
         }
         else {
             transform.position = spline.GetPoint(spline.DistanceToTime(pos));

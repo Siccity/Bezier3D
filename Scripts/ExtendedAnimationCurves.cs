@@ -26,65 +26,124 @@ namespace Bezier3D {
         }
     }
 
-    /// <summary>
-    /// Animation curve which stores quaternions, and can evaluate smoothed values in between keyframes
-    /// </summary>
-    [System.Serializable]
+    /// <summary> Animation curve which stores quaternions, and can evaluate smoothed values in between keyframes </summary>
+    [Serializable]
     public class QuaternionAnimationCurve {
 
-        private Keyframe[] keys = new Keyframe[0];
-
-        private struct Keyframe : IComparable<Keyframe> {
-            public Quaternion value;
-            public float time;
-
-            public Keyframe(float time, Quaternion value) {
-                this.time = time;
-                this.value = value;
-            }
-
-            public int CompareTo(Keyframe other) {
-                return time.CompareTo(other.time);
-            }
-        }
+        [SerializeField]
+        private QuaternionKeyframe[] keys = new QuaternionKeyframe[0];
 
         /// <summary> The number of keys in the curve (Read Only) </summary>
         public int length { get { return keys.Length; } }
 
-        public Quaternion Evaluate(float time) {
-            if (keys.Length == 0) return Quaternion.identity;
+        public QuaternionAnimationCurve (QuaternionKeyframe[] keys) {
+            this.keys = keys;
+        }
 
-            int len = length;
-            Quaternion a = keys[0].value;
-            Quaternion b = keys[0].value;
-            for (int i = 0; i < len; i++) {
-                Quaternion c = keys[i].value;
-                if (keys[i].time > time) {
-                    if (i < len-1) {
-                        float t = Mathf.InverseLerp(keys[i].time, keys[i+1].time, time);
-                        Quaternion d = keys[i+1].value;
+        public Quaternion EvaluateCubic(float time) {
+            if (keys.Length == 0) return Quaternion.identity;
+            else if (keys.Length == 1) return keys[0].value;
+            else if (keys.Length == 2) {
+                if (time <= keys[0].time) return keys[0].value;
+                else if (time >= keys[1].time) return keys[1].value;
+                else {
+                    float t = Mathf.InverseLerp(keys[0].time, keys[1].time, time);
+                    return Quaternion.Lerp(keys[0].value, keys[1].value, t);
+                }
+            }
+            else {
+
+                int len = length;
+                for (int i = 0; i < len; i++) {
+                    if (keys[i].time > time) {
+                        int t0Index;
+                        if (i > 1) t0Index = i - 2;
+                        if (i > 0) t0Index = i - 1;
+                        else t0Index = i;
+
+                        int p0Index = i;
+                        if (i > 0) p0Index = i - 1;
+                        else p0Index = i;
+
+                        int p1Index = i;
+
+                        int t1Index;
+                        if (i < len - 1) t1Index = i + 1;
+                        else t1Index = i;
+
+                        Quaternion p0 = keys[p0Index].value;
+                        Quaternion p1 = keys[p1Index].value;
+                        Quaternion t0 = keys[t0Index].value;
+                        Quaternion t1 = keys[t1Index].value;
+
+                        //Debug.Log(keys.Length + " " + keys[0].time + " " + keys[1].time + " " + keys[2].time + " " + time);
+
+
+                        float t = Mathf.InverseLerp(keys[p0Index].time, keys[p1Index].time, time);
                         return Quaternion.Lerp(
                             Quaternion.Lerp(
-                                Quaternion.Lerp(a, b, t),
-                                Quaternion.Lerp(b, c, t),
+                                Quaternion.Lerp(p0, t0, t),
+                                Quaternion.Lerp(t0, t1, t),
                                 t),
                             Quaternion.Lerp(
-                                Quaternion.Lerp(b,c,t),
-                                Quaternion.Lerp(c,d,t),
+                                Quaternion.Lerp(t0, t1, t),
+                                Quaternion.Lerp(t1, p1, t),
                                 t),
                             t);
                     }
                 }
-                a = b;
-                b = c;
+                //Debug.Log("noneFound "+keys.Length + " " + keys[0].time + " " + keys[1].time + " " + keys[2].time + " " + time);
+                return keys[keys.Length - 1].value;
             }
-            return keys[keys.Length-1].value;
+        }
+
+        public Quaternion EvaluateLinear(float time) {
+            if (keys.Length == 0) return Quaternion.identity;
+            else if (keys.Length == 1) return keys[0].value;
+            else if (keys.Length == 2) {
+                if (time <= keys[0].time) return keys[0].value;
+                else if (time >= keys[1].time) return keys[1].value;
+                else {
+                    float t = Mathf.InverseLerp(keys[0].time, keys[1].time, time);
+                    return Quaternion.Lerp(keys[0].value, keys[1].value, t);
+                }
+            }
+            else {
+
+                int len = length;
+                for (int i = 0; i < len; i++) {
+                    if (keys[i].time > time) {
+
+                        int p0Index = i;
+                        if (i > 0) p0Index = i - 1;
+                        else p0Index = i;
+
+                        int p1Index = i;
+
+                        Quaternion p0 = keys[p0Index].value;
+                        Quaternion p1 = keys[p1Index].value;
+                        //Debug.Log(keys.Length + " " + keys[0].time + " " + keys[1].time + " " + keys[2].time + " " + time);
+
+
+                        float t = Mathf.InverseLerp(keys[p0Index].time, keys[p1Index].time, time);
+                        return Quaternion.Slerp(p0,p1,t);
+                    }
+                }
+                //Debug.Log("noneFound "+keys.Length + " " + keys[0].time + " " + keys[1].time + " " + keys[2].time + " " + time);
+                return keys[keys.Length - 1].value;
+            }
         }
 
         public void AddKey(float time, Quaternion value) {
-            List<Keyframe> qList = new List<Keyframe>(keys);
-            qList.Add(new Keyframe(time, value));
-            qList.Sort();
+            List<QuaternionKeyframe> qList = new List<QuaternionKeyframe>(keys);
+            for (int i = 0; i < keys.Length; i++) {
+                if (keys[i].time > time) {
+                    qList.Insert(i, new QuaternionKeyframe(time, value));
+                    keys = qList.ToArray();
+                    return;
+                }
+            }
+            qList.Add(new QuaternionKeyframe(time, value));
             keys = qList.ToArray();
         }
 
@@ -93,6 +152,18 @@ namespace Bezier3D {
             return keys[keys.Length - 1].value;
         }
     }
+
+    [Serializable]
+    public struct QuaternionKeyframe {
+        public Quaternion value;
+        public float time;
+
+        public QuaternionKeyframe(float time, Quaternion value) {
+            this.time = time;
+            this.value = value;
+        }
+    }
+
 
     /// <summary> Similar to AnimationCurve, except all values are constant. No smoothing applied between keys </summary>
     [System.Serializable]

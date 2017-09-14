@@ -13,7 +13,7 @@ public class Bezier3DSpline : MonoBehaviour{
 	public int CurveCount { get { return curves.Length; } }
     /// <summary> Interpolation steps per curve </summary>
     public int cacheDensity { get { return _cacheDensity; } }
-    [SerializeField] protected int _cacheDensity = 60;
+    [SerializeField] protected int _cacheDensity = 20;
     /// <summary> Whether the end of the spline connects to the start of the spline </summary>
     public bool closed { get { return _closed; } }
     [SerializeField] protected bool _closed = false;
@@ -25,6 +25,14 @@ public class Bezier3DSpline : MonoBehaviour{
     /// <summary> Automatic knots don't have handles. Instead they have a percentage and adjust their handles accordingly. A percentage of 0 indicates that this is not automatic </summary>
     [SerializeField] protected List<float> autoKnot = new List<float>() { 0, 0 };
     [SerializeField] protected List<NullableQuaternion> orientations = new List<NullableQuaternion>() { new NullableQuaternion(null), new NullableQuaternion(null) };
+    /// <summary> Curve for evaluating orientations between orientation anchor points </summary>
+    [SerializeField] protected QuaternionAnimationCurve anchorCurve;
+
+    #region Mono methods
+    private void Reset() {
+        UpdateAnchorCurve();
+    }
+    #endregion 
 
     #region Public methods
 
@@ -103,12 +111,14 @@ public class Bezier3DSpline : MonoBehaviour{
     #region Public get: Up
     /// <summary> Return up vector at set distance along the <see cref="Bezier3DSpline"/>. </summary>
     public Vector3 GetUp(float dist) {
-        return GetUp(dist, GetForward(dist), false);
+        //return GetUp(dist, GetForward(dist), false);
+        return transform.TransformDirection(GetUpLocal(dist, GetForward(dist)));
     }
 
     /// <summary> Return up vector at set distance along the <see cref="Bezier3DSpline"/> in local coordinates. </summary>
     public Vector3 GetUpLocal(float dist) {
-        return GetUp(dist, GetForward(dist), true);
+        //return GetUp(dist, GetForward(dist), true);
+        return GetUpLocal(dist, GetForward(dist));
     }
     #endregion
 
@@ -136,13 +146,18 @@ public class Bezier3DSpline : MonoBehaviour{
 
     public Quaternion GetOrientationLocal(float dist) {
         Vector3 forward = GetForwardLocal(dist);
-        Vector3 up = GetUp(dist, forward, true);
+        Vector3 up = GetUpLocal(dist, forward);
         return Quaternion.LookRotation(forward, up);
     }
 
     public Quaternion GetOrientationLocalFast(float dist) {
-        Bezier3DCurve curve = GetCurveDistance(ref dist);
-        return curve.GetOrientationFast(curve.Dist2Time(dist));
+        float localDist = dist;
+        Bezier3DCurve curve = GetCurveDistance(ref localDist);
+        /*float t = curve.Dist2Time(localDist);
+        Vector3 forward = curve.GetForwardFast(t);
+        Vector3 up = GetUpLocal(dist,forward);
+        return Quaternion.LookRotation(forward, up);*/
+        return curve.GetOrientationFast(curve.Dist2Time(localDist));
     }
     #endregion
 
@@ -350,6 +365,7 @@ public class Bezier3DSpline : MonoBehaviour{
     }
 
     #region Private methods
+
     /*private QuaternionAnimationCurve GetOrientationCache(int curveIndex) {
         QuaternionAnimationCurve orientationCache = new QuaternionAnimationCurve();
         Bezier3DCurve curve = GetCurve(curveIndex);
@@ -365,21 +381,28 @@ public class Bezier3DSpline : MonoBehaviour{
     }*/
 
     private Vector3AnimationCurve GetUpCache(int curveIndex) {
+        float curveLength = curves[curveIndex].length;
         Vector3AnimationCurve upCache = new Vector3AnimationCurve();
         Bezier3DCurve curve = GetCurve(curveIndex);
         float startT = curveIndex;
         float delta = 1f / curve.CacheSteps;
+        float totalDist = 0;
+        for (int i = 0; i < curveIndex; i++) {
+            totalDist += curves[i].length;
+        }
+        UpdateAnchorCurve();
         for (int i = 0; i <= curve.CacheSteps; i++) {
-            float d = delta * i;
-            Vector3 forward = curve.GetForward(d);
-            Vector3 up = GetUp(TimeToDistance(d));
+            float localDist = delta * i;
+            Vector3 forward = curve.GetForwardFast(localDist);
+            Vector3 up = GetUpLocal(totalDist+(localDist * curveLength), forward);
             //Vector3 up = Vector3.ProjectOnPlane(Vector3.up, forward).normalized; //((GetUp(TimeToDistance();
-            upCache.AddKey(d, up);
+            upCache.AddKey(localDist, up);
         }
         return upCache;
     }
 
-    private Vector3 GetUp(float dist, Vector3 tangent, bool local) {
+    /*private Vector3 GetUp(float dist, Vector3 tangent, bool local) {
+
         float t = DistanceToTime(dist);
         t *= CurveCount;
 
@@ -411,7 +434,31 @@ public class Bezier3DSpline : MonoBehaviour{
         //Debug.Log(t_a + " / " + t_b + " / " + t);
         return Vector3.ProjectOnPlane(rot * Vector3.up, tangent).normalized;
     }
+    */
+    private Vector3 GetUpLocal(float dist, Vector3 tangent) {
+        Quaternion rot = anchorCurve.EvaluateLinear(dist);
+        return Vector3.ProjectOnPlane(rot * Vector3.up, tangent).normalized;
+    }
 
+    private void UpdateAnchorCurve() {
+        int nonNulls = 0;
+        for (int i = 0; i < orientations.Count; ++i) {
+            if (orientations[i].HasValue) ++nonNulls;
+        }
+        QuaternionKeyframe[] keys = new QuaternionKeyframe[nonNulls];
+
+        int keyIndex = 0;
+        float tempDist = 0;
+
+        for (int i = 0; i < KnotCount; i++) {
+            if (orientations[i].HasValue) {
+                keys[keyIndex] = new QuaternionKeyframe(tempDist, orientations[i].Value);
+                ++keyIndex;
+            }
+            if (i != CurveCount) tempDist += curves[i].length;
+        }
+        anchorCurve = new QuaternionAnimationCurve(keys);
+    }
     /// <summary> Get the curve indices in direct contact with knot </summary>
     private void GetCurveIndicesForKnot(int knotIndex, out int preCurveIndex, out int postCurveIndex) {
         //Get the curve index in direct contact with, before the knot

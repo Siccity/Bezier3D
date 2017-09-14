@@ -36,20 +36,20 @@ public class Bezier3DCurve {
 
 
     /// <summary> Constructor </summary>
-    /// <param name="a">Start Point</param>
-    /// <param name="b">First handle. Local to start point</param>
-    /// <param name="c">Second handle. Local to end point</param>
-    /// <param name="d">End point</param>
+    /// <param name="p0">Start Point</param>
+    /// <param name="t0">First handle. Local to start point</param>
+    /// <param name="t1">Second handle. Local to end point</param>
+    /// <param name="p1">End point</param>
     /// <param name="steps">Number of steps in the cache. More steps = more accurate approximation</param>
-    public Bezier3DCurve(Vector3 a, Vector3 b, Vector3 c, Vector3 d, int steps) {
-        _a = a;
-        _b = b;
-        _c = c;
-        _d = d;
-        _B = a + b;
-        _C = d + c;
-        GetDistanceCache(a,a+b,c+d,d,steps, out _cache, out _reverseCache);
-        _tangentCache = GetTangentCache(a, a + b, c + d, d, steps);
+    public Bezier3DCurve(Vector3 p0, Vector3 t0, Vector3 t1, Vector3 p1, int steps) {
+        _a = p0;
+        _b = t0;
+        _c = t1;
+        _d = p1;
+        _B = p0 + t0;
+        _C = p1 + t1;
+        GetDistanceCache(p0,p0+t0,t1+p1,p1,steps, out _cache, out _reverseCache);
+        _tangentCache = GetTangentCache(p0, p0 + t0, t1 + p1, p1, steps);
         _length = _cache.keys[_cache.keys.Length - 1].time;
     }
 
@@ -142,19 +142,43 @@ public class Bezier3DCurve {
         }
     }
     public static Vector3 GetPoint(Vector3 a, Vector3 b, Vector3 c, Vector3 d, float t) {
-		float oneMinusT = 1f - t;
-		return
-			oneMinusT * oneMinusT * oneMinusT * a +
-			3f * oneMinusT * oneMinusT * t * b +
-			3f * oneMinusT * t * t * c +
-			t * t * t * d;
+        float oneMinusT = 1f - t;
+        float part1 = oneMinusT * oneMinusT * oneMinusT;
+        float part2 = 3f * oneMinusT * oneMinusT * t;
+        float part3 = 3f * oneMinusT * t * t;
+        float part4 = t * t * t;
+        return new Vector3(
+                part1 * a.x +
+                part2 * b.x +
+                part3 * c.x +
+                part4 * d.x,
+
+                part1 * a.y +
+                part2 * b.y +
+                part3 * c.y +
+                part4 * d.y,
+
+                part1 * a.z +
+                part2 * b.z +
+                part3 * c.z +
+                part4 * d.z
+                );
 	}
     private static Vector3 GetForward(Vector3 a, Vector3 b, Vector3 c, Vector3 d, float t) { //Also known as first derivative
 		float oneMinusT = 1f - t;
-		return
-			3f * oneMinusT * oneMinusT * (b - a) +
-			6f * oneMinusT * t * (c - b) +
-			3f * t * t * (d - c);
+        return new Vector3(
+            3f * oneMinusT * oneMinusT * (b.x - a.x) +
+            6f * oneMinusT * t * (c.x - b.x) +
+            3f * t * t * (d.x - c.x),
+
+            3f * oneMinusT * oneMinusT * (b.y - a.y) +
+            6f * oneMinusT * t * (c.y - b.y) +
+            3f * t * t * (d.y - c.y),
+
+            3f * oneMinusT * oneMinusT * (b.z - a.z) +
+            6f * oneMinusT * t * (c.z - b.z) +
+            3f * t * t * (d.z - c.z)
+            );
 	}
     #endregion
 }
