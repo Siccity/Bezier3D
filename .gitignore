@@ -10,3 +10,6 @@ Temp/
 *.csproj
 
 Bezier3D\.userprefs
+
+README.md.meta
+LICENSE.md.meta
