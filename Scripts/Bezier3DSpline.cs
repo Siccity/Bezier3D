@@ -119,25 +119,29 @@ public class Bezier3DSpline : MonoBehaviour{
     public Quaternion GetOrientation(float dist) {
         Vector3 forward = GetForward(dist);
         Vector3 up = GetUp(dist, forward, false);
-        return Quaternion.LookRotation(forward, up);
+        if (forward.sqrMagnitude != 0) return Quaternion.LookRotation(forward, up);
+        else return Quaternion.identity;
     }
 
     public Quaternion GetOrientationFast(float dist) {
         Vector3 forward = GetForwardFast(dist);
         Vector3 up = GetUp(dist, forward, false);
-        return Quaternion.LookRotation(forward, up);
+        if (forward.sqrMagnitude != 0) return Quaternion.LookRotation(forward, up);
+        else return Quaternion.identity;
     }
 
     public Quaternion GetOrientationLocal(float dist) {
         Vector3 forward = GetForwardLocal(dist);
         Vector3 up = GetUp(dist, forward, true);
-        return Quaternion.LookRotation(forward, up);
+        if (forward.sqrMagnitude != 0) return Quaternion.LookRotation(forward, up);
+        else return Quaternion.identity;
     }
 
     public Quaternion GetOrientationLocalFast(float dist) {
         Vector3 forward = GetForwardLocalFast(dist);
         Vector3 up = GetUp(dist, forward, true);
-        return Quaternion.LookRotation(forward, up);
+        if (forward.sqrMagnitude != 0) return Quaternion.LookRotation(forward, up);
+        else return Quaternion.identity;
     }
     #endregion
 
