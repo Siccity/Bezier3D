@@ -25,6 +25,9 @@ public class Bezier3DCurve {
     /// <summary> Total length of the curve </summary>
     public float length { get { return _length; } }
     [SerializeField] private float _length;
+    /// <summary> True if the curve is defined as a straight line </summary>
+    public bool isLinear { get { return _isLinear; } }
+    [SerializeField] private bool _isLinear;
 
     public AnimationCurve cache { get { return _cache; } }
     [SerializeField] private AnimationCurve _cache;
@@ -38,6 +41,7 @@ public class Bezier3DCurve {
         _d = d;
         _B = a + b;
         _C = d + c;
+        _isLinear = b.sqrMagnitude == 0f && c.sqrMagnitude == 0f;
         _cache = GetDistanceCache(a,a+b,c+d,d,steps);
         _tangentCache = GetTangentCache(a, a + b, c + d, d, steps);
         _length = _cache.keys[_cache.keys.Length - 1].time;
