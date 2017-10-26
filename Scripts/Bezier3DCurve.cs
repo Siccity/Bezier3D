@@ -34,6 +34,10 @@ public class Bezier3DCurve {
     [SerializeField] private Bezier3D.Vector3AnimationCurve _tangentCache;
 
     /// <summary> Constructor </summary>
+    /// <param name="a">Start point</param>
+    /// <param name="b">First handle. Local to start point</param>
+    /// <param name="c">Second handle. Local to end point</param>
+    /// <param name="d">End point</param>
 	public Bezier3DCurve(Vector3 a, Vector3 b, Vector3 c, Vector3 d, int steps) {
         _a = a;
         _b = b;
