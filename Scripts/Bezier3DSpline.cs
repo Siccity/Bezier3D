@@ -47,7 +47,7 @@ public class Bezier3DSpline : MonoBehaviour{
 
     /// <summary> Get <see cref="Bezier3DCurve"/> by index </summary>
     public Bezier3DCurve GetCurve(int i) {
-        if (i > CurveCount) throw new System.IndexOutOfRangeException("Cuve index " + i + " out of range");
+        if (i >= CurveCount || i < 0) throw new System.IndexOutOfRangeException("Cuve index " + i + " out of range");
         return curves[i];
     }
 
