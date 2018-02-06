@@ -243,7 +243,7 @@ public class Bezier3DSplineEditor : Editor {
             if (knot.orientation.HasValue) {
                 Handles.color = Handles.yAxisColor;
                 Quaternion rot = spline.transform.rotation * knot.orientation.Value;
-                Handles.ArrowHandleCap(0, knotWorldPos, rot * Quaternion.AngleAxis(90, Vector3.left), 0.15f, EventType.repaint);
+                Handles.ArrowHandleCap(0, knotWorldPos, rot * Quaternion.AngleAxis(90, Vector3.left), 0.15f, EventType.Repaint);
             }
             Handles.color = Color.white;
             if (Handles.Button(knotWorldPos, Camera.current.transform.rotation, HandleUtility.GetHandleSize(knotWorldPos) * handleSize, HandleUtility.GetHandleSize(knotWorldPos) * handleSize, Handles.CircleHandleCap)) {
@@ -276,7 +276,7 @@ public class Bezier3DSplineEditor : Editor {
             EditorGUI.BeginChangeCheck();
             Quaternion rot = knot.orientation.HasValue ? knot.orientation.Value : Quaternion.identity;
             Handles.color = Handles.yAxisColor;
-            Handles.ArrowHandleCap(0, knotWorldPos, rot * Quaternion.AngleAxis(90, Vector3.left), HandleUtility.GetHandleSize(knotWorldPos), EventType.repaint);
+            Handles.ArrowHandleCap(0, knotWorldPos, rot * Quaternion.AngleAxis(90, Vector3.left), HandleUtility.GetHandleSize(knotWorldPos), EventType.Repaint);
             rot = Handles.RotationHandle(rot, knotWorldPos);
             if (EditorGUI.EndChangeCheck()) {
                 Undo.RecordObject(spline, "Edit Bezier Point");
