@@ -30,6 +30,28 @@ public class Bezier3DSpline : MonoBehaviour{
 
     #region Public: get
 
+
+    public void GetOrientationRaw(int index, out Quaternion result)
+    {
+        for (int i = index; i < CurveCount; i++)
+        {
+            if (orientations[i].HasValue)
+            {
+                result = orientations[i].Value;
+                return;
+            }
+        }
+        for (int i = index-1; i >= 0; i++)
+        {
+            if (orientations[i].HasValue)
+            {
+                result = orientations[i].Value;
+                return;
+            }
+        }
+        result = Quaternion.identity;
+    }
+
     public float DistanceToTime(float dist) {
         float t = 0f;
         for (int i = 0; i < CurveCount; i++) {
@@ -410,6 +432,26 @@ public class Bezier3DSpline : MonoBehaviour{
         }
         curveT = 1f;
         return curves[CurveCount - 1];
+    }
+
+    public Bezier3DCurve GetCurveIndexTime(float splineDist, out int index, out float curveTime)
+    {
+        Bezier3DCurve result;
+        for (int i = 0; i < CurveCount; i++)
+        {
+            result = curves[i];
+            if (result.length < splineDist) splineDist -= result.length;
+            else
+            {
+                index = i;
+                curveTime = result.Dist2Time(splineDist);                
+                return result;
+            }
+        }
+        index = CurveCount - 1;
+        result = curves[index];
+        curveTime = 1f;
+        return result;
     }
 
     private Bezier3DCurve GetCurveDistance(float splineDist, out float curveDist) {
