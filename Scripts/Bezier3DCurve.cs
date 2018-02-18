@@ -56,6 +56,17 @@ public class Bezier3DCurve {
 		return GetPoint(_a, _B, _C, _d, t);
 	}
 
+    public void GetPoint(float t, out Vector3 point)
+    {
+        GetPoint(ref _a, ref _B, ref _C, ref _d, t, out point);
+    }
+
+    public void GetForward(float t, out Vector3 forward)
+    {
+        GetForward(ref _a, ref _B, ref _C, ref _d, t, out forward);
+    }
+
+
     public Vector3 GetForward(float t) {
         return GetForward(_a, _B, _C, _d, t);
     }
@@ -126,5 +137,31 @@ public class Bezier3DCurve {
 			6f * oneMinusT * t * (c - b) +
 			3f * t * t * (d - c);
 	}
+
+    private static void GetForward(ref Vector3 a, ref Vector3 b, ref Vector3 c, ref Vector3 d, float t, out Vector3 result)
+    { //Also known as first derivative
+        float oneMinusT = 1f - t;
+        float baScale = 3f * oneMinusT * oneMinusT;
+        float cbScale = 6f * oneMinusT * t;
+        float dcScale = 3f * t * t;
+
+        result.x = baScale * (b.x - a.x) + cbScale * (c.x - b.x) + dcScale * (d.x - c.x);
+        result.y = baScale * (b.y - a.y) + cbScale * (c.y - b.y) + dcScale * (d.y - c.y);
+        result.z = baScale * (b.z - a.z) + cbScale * (c.z - b.z) + dcScale * (d.z - c.z);
+    }
+
+    private static void GetPoint(ref Vector3 a, ref Vector3 b, ref Vector3 c, ref Vector3 d, float t, out Vector3 result)
+    { 
+        float oneMinusT = 1f - t;
+        float aScale = oneMinusT * oneMinusT * oneMinusT;
+        float bScale = 3f * oneMinusT * oneMinusT * t;
+        float cScale = 3f * oneMinusT * t * t;
+        float dScale = t * t * t;
+
+        result.x = aScale * a.x + bScale * b.x + cScale * c.x + dScale * d.x;
+        result.y = aScale * a.y + bScale * b.y + cScale * c.y + dScale * d.y;
+        result.z = aScale * a.z + bScale * b.z + cScale * c.z + dScale * d.z;
+    }
+
     #endregion
 }
