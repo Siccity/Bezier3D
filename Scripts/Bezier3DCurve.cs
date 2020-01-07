@@ -6,7 +6,6 @@ using UnityEngine;
 [System.Serializable]
 public class Bezier3DCurve {
 
-
     /// <summary> Start point </summary>
     public Vector3 a { get { return _a; } }
     [SerializeField] private Vector3 _a;
@@ -38,7 +37,7 @@ public class Bezier3DCurve {
     /// <param name="b">First handle. Local to start point</param>
     /// <param name="c">Second handle. Local to end point</param>
     /// <param name="d">End point</param>
-	public Bezier3DCurve(Vector3 a, Vector3 b, Vector3 c, Vector3 d, int steps) {
+    public Bezier3DCurve(Vector3 a, Vector3 b, Vector3 c, Vector3 d, int steps) {
         _a = a;
         _b = b;
         _c = c;
@@ -46,26 +45,23 @@ public class Bezier3DCurve {
         _B = a + b;
         _C = d + c;
         _isLinear = b.sqrMagnitude == 0f && c.sqrMagnitude == 0f;
-        _cache = GetDistanceCache(a,a+b,c+d,d,steps);
+        _cache = GetDistanceCache(a, a + b, c + d, d, steps);
         _tangentCache = GetTangentCache(a, a + b, c + d, d, steps);
         _length = _cache.keys[_cache.keys.Length - 1].time;
     }
 
-    #region Public methods
+#region Public methods
     public Vector3 GetPoint(float t) {
-		return GetPoint(_a, _B, _C, _d, t);
-	}
+        return GetPoint(_a, _B, _C, _d, t);
+    }
 
-    public void GetPoint(float t, out Vector3 point)
-    {
+    public void GetPoint(float t, out Vector3 point) {
         GetPoint(ref _a, ref _B, ref _C, ref _d, t, out point);
     }
 
-    public void GetForward(float t, out Vector3 forward)
-    {
+    public void GetForward(float t, out Vector3 forward) {
         GetForward(ref _a, ref _B, ref _C, ref _d, t, out forward);
     }
-
 
     public Vector3 GetForward(float t) {
         return GetForward(_a, _B, _C, _d, t);
@@ -78,13 +74,13 @@ public class Bezier3DCurve {
     public float Dist2Time(float distance) {
         return _cache.Evaluate(distance);
     }
-    #endregion
+#endregion
 
-    #region Private methods
+#region Private methods
     private static Bezier3D.Vector3AnimationCurve GetTangentCache(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, int steps) {
         Bezier3D.Vector3AnimationCurve curve = new Bezier3D.Vector3AnimationCurve(); //time = distance, value = time
         float delta = 1f / steps;
-        for (int i = 0; i < steps+1; i++) {
+        for (int i = 0; i < steps + 1; i++) {
             curve.AddKey(delta * i, GetForward(p0, p1, p2, p3, delta * i).normalized);
         }
         return curve;
@@ -96,7 +92,7 @@ public class Bezier3DCurve {
         float totalLength = 0f;
         for (int i = 0; i <= steps; i++) {
             //Normalize i
-            float t = (float)i / (float)steps;
+            float t = (float) i / (float) steps;
             //Get position from t
             Vector3 newPos = GetPoint(p0, p1, p2, p3, t);
             //First step
@@ -121,25 +117,25 @@ public class Bezier3DCurve {
     }
 
     public static Vector3 GetPoint(Vector3 a, Vector3 b, Vector3 c, Vector3 d, float t) {
-		t = Mathf.Clamp01(t);
-		float oneMinusT = 1f - t;
-		return
-			oneMinusT * oneMinusT * oneMinusT * a +
-			3f * oneMinusT * oneMinusT * t * b +
-			3f * oneMinusT * t * t * c +
-			t * t * t * d;
-	}
-    private static Vector3 GetForward(Vector3 a, Vector3 b, Vector3 c, Vector3 d, float t) { //Also known as first derivative
-		t = Mathf.Clamp01(t);
-		float oneMinusT = 1f - t;
-		return
-			3f * oneMinusT * oneMinusT * (b - a) +
-			6f * oneMinusT * t * (c - b) +
-			3f * t * t * (d - c);
-	}
+        t = Mathf.Clamp01(t);
+        float oneMinusT = 1f - t;
+        return
+        oneMinusT * oneMinusT * oneMinusT * a +
+            3f * oneMinusT * oneMinusT * t * b +
+            3f * oneMinusT * t * t * c +
+            t * t * t * d;
+    }
 
-    private static void GetForward(ref Vector3 a, ref Vector3 b, ref Vector3 c, ref Vector3 d, float t, out Vector3 result)
-    { //Also known as first derivative
+    private static Vector3 GetForward(Vector3 a, Vector3 b, Vector3 c, Vector3 d, float t) { //Also known as first derivative
+        t = Mathf.Clamp01(t);
+        float oneMinusT = 1f - t;
+        return
+        3f * oneMinusT * oneMinusT * (b - a) +
+            6f * oneMinusT * t * (c - b) +
+            3f * t * t * (d - c);
+    }
+
+    private static void GetForward(ref Vector3 a, ref Vector3 b, ref Vector3 c, ref Vector3 d, float t, out Vector3 result) { //Also known as first derivative
         float oneMinusT = 1f - t;
         float baScale = 3f * oneMinusT * oneMinusT;
         float cbScale = 6f * oneMinusT * t;
@@ -150,8 +146,7 @@ public class Bezier3DCurve {
         result.z = baScale * (b.z - a.z) + cbScale * (c.z - b.z) + dcScale * (d.z - c.z);
     }
 
-    private static void GetPoint(ref Vector3 a, ref Vector3 b, ref Vector3 c, ref Vector3 d, float t, out Vector3 result)
-    { 
+    private static void GetPoint(ref Vector3 a, ref Vector3 b, ref Vector3 c, ref Vector3 d, float t, out Vector3 result) {
         float oneMinusT = 1f - t;
         float aScale = oneMinusT * oneMinusT * oneMinusT;
         float bScale = 3f * oneMinusT * oneMinusT * t;
@@ -162,6 +157,5 @@ public class Bezier3DCurve {
         result.y = aScale * a.y + bScale * b.y + cScale * c.y + dScale * d.y;
         result.z = aScale * a.z + bScale * b.z + cScale * c.z + dScale * d.z;
     }
-
-    #endregion
+#endregion
 }

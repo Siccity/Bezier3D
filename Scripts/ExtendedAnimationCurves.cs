@@ -45,9 +45,8 @@ namespace Bezier3D {
             return new Quaternion(xQ.Evaluate(time), yQ.Evaluate(time), zQ.Evaluate(time), wQ.Evaluate(time));
         }
 
-        public QuaternionAnimationCurve() {
+        public QuaternionAnimationCurve() { }
 
-        }
         public QuaternionAnimationCurve(Serializable serialized) {
             xQ = ExtendedAnimationCurves.Deserialize(serialized.xT, serialized.xV);
             yQ = ExtendedAnimationCurves.Deserialize(serialized.yT, serialized.yV);
@@ -186,9 +185,9 @@ namespace Bezier3D {
         public Vector3 GetKeyValue(int keyIndex) {
             return new Vector3(xV.keys[keyIndex].value, yV.keys[keyIndex].value, zV.keys[keyIndex].value);
         }
-        public Vector3AnimationCurve() {
 
-        }
+        public Vector3AnimationCurve() { }
+
         public Vector3AnimationCurve(Serializable serialized) {
             xV = ExtendedAnimationCurves.Deserialize(serialized.xT, serialized.xV);
             yV = ExtendedAnimationCurves.Deserialize(serialized.yT, serialized.yV);

@@ -1,5 +1,5 @@
-﻿using UnityEngine;
-using UnityEditor;
+﻿using UnityEditor;
+using UnityEngine;
 
 [CustomPreview(typeof(Bezier3DSpline))]
 public class Bezier3DSplinePreview : ObjectPreview {

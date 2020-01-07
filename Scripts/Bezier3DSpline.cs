@@ -1,15 +1,12 @@
-﻿using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
-using System.Linq;
-using UnityEngine.Serialization;
 
 [AddComponentMenu("Miscellaneous/Bezier Spline")]
-public class Bezier3DSpline : MonoBehaviour{
+public class Bezier3DSpline : MonoBehaviour {
 
-	public int KnotCount { get { return curves.Length+(closed?0:1); } }
-	public int CurveCount { get { return curves.Length; } }
+    public int KnotCount { get { return curves.Length + (closed?0 : 1); } }
+    public int CurveCount { get { return curves.Length; } }
     /// <summary> Interpolation steps per curve </summary>
     public int cacheDensity { get { return _cacheDensity; } }
     [SerializeField] protected int _cacheDensity = 60;
@@ -20,35 +17,27 @@ public class Bezier3DSpline : MonoBehaviour{
     public float totalLength { get { return _totalLength; } }
     [SerializeField] protected float _totalLength = 2.370671f;
     /// <summary> Curves of the spline </summary>
-    [SerializeField] protected Bezier3DCurve[] curves = new Bezier3DCurve[] { new Bezier3DCurve( new Vector3(-1,0,0), new Vector3(1,0,1), new Vector3(-1,0,-1), new Vector3(1,0,0), 60)};
+    [SerializeField] protected Bezier3DCurve[] curves = new Bezier3DCurve[] { new Bezier3DCurve(new Vector3(-1, 0, 0), new Vector3(1, 0, 1), new Vector3(-1, 0, -1), new Vector3(1, 0, 0), 60) };
     /// <summary> Automatic knots don't have handles. Instead they have a percentage and adjust their handles accordingly. A percentage of 0 indicates that this is not automatic </summary>
     [SerializeField] protected List<float> autoKnot = new List<float>() { 0, 0 };
     [SerializeField] protected List<NullableQuaternion> orientations = new List<NullableQuaternion>() { new NullableQuaternion(null), new NullableQuaternion(null) };
 
-    #region Public methods
+#region Public methods
 
-    #region Public: get
+#region Public : get
 
-
-    public void GetOrientationRaw(int index, out Quaternion result)
-    {
-        for (int i = index; i < CurveCount; i++)
-        {
-            if (orientations[i].HasValue)
-            {
-                result = orientations[i].Value;
-                return;
+    public Quaternion GetOrientationRaw(int index) {
+        for (int i = index; i < CurveCount; i++) {
+            if (orientations[i].HasValue) {
+                return orientations[i].Value;
             }
         }
-        for (int i = index-1; i >= 0; i++)
-        {
-            if (orientations[i].HasValue)
-            {
-                result = orientations[i].Value;
-                return;
+        for (int i = index - 1; i >= 0; i++) {
+            if (orientations[i].HasValue) {
+                return orientations[i].Value;
             }
         }
-        result = Quaternion.identity;
+        return Quaternion.identity;
     }
 
     public float DistanceToTime(float dist) {
@@ -57,8 +46,7 @@ public class Bezier3DSpline : MonoBehaviour{
             if (curves[i].length < dist) {
                 dist -= curves[i].length;
                 t += 1f / CurveCount;
-            }
-            else {
+            } else {
                 t += curves[i].Dist2Time(dist) / CurveCount;
                 return t;
             }
@@ -77,16 +65,14 @@ public class Bezier3DSpline : MonoBehaviour{
         if (i == 0) {
             if (closed) return new Knot(curves[0].a, curves[CurveCount - 1].c, curves[0].b, autoKnot[i], orientations[i].NullableValue);
             else return new Knot(curves[0].a, Vector3.zero, curves[0].b, autoKnot[i], orientations[i].NullableValue);
-        }
-        else if (i == CurveCount) {
+        } else if (i == CurveCount) {
             return new Knot(curves[i - 1].d, curves[i - 1].c, Vector3.zero, autoKnot[i], orientations[i].NullableValue);
-        }
-        else {
+        } else {
             return new Knot(curves[i].a, curves[i - 1].c, curves[i].b, autoKnot[i], orientations[i].NullableValue);
         }
     }
 
-    #region Public get: Forward
+#region Public get : Forward
     /// <summary> Return forward vector at set distance along the <see cref="Bezier3DSpline"/>. </summary>
     public Vector3 GetForward(float dist) {
         return transform.TransformDirection(GetForwardLocal(dist));
@@ -108,9 +94,9 @@ public class Bezier3DSpline : MonoBehaviour{
         Bezier3DCurve curve = GetCurveDistance(dist, out dist);
         return curve.GetForwardFast(curve.Dist2Time(dist));
     }
-    #endregion
+#endregion
 
-    #region Public get: Up
+#region Public get : Up
     /// <summary> Return up vector at set distance along the <see cref="Bezier3DSpline"/>. </summary>
     public Vector3 GetUp(float dist) {
         return GetUp(dist, GetForward(dist), false);
@@ -120,9 +106,9 @@ public class Bezier3DSpline : MonoBehaviour{
     public Vector3 GetUpLocal(float dist) {
         return GetUp(dist, GetForward(dist), true);
     }
-    #endregion
+#endregion
 
-    #region Public get: Point
+#region Public get : Point
     /// <summary> Return up vector at set distance along the <see cref="Bezier3DSpline"/>. </summary>
     public Vector3 GetPoint(float dist) {
         Bezier3DCurve curve = GetCurveDistance(dist, out dist);
@@ -134,9 +120,9 @@ public class Bezier3DSpline : MonoBehaviour{
         Bezier3DCurve curve = GetCurveDistance(dist, out dist);
         return curve.GetPoint(curve.Dist2Time(dist));
     }
-    #endregion
+#endregion
 
-    #region Public get: Orientation
+#region Public get : Orientation
     public Quaternion GetOrientation(float dist) {
         Vector3 forward = GetForward(dist);
         Vector3 up = GetUp(dist, forward, false);
@@ -164,11 +150,11 @@ public class Bezier3DSpline : MonoBehaviour{
         if (forward.sqrMagnitude != 0) return Quaternion.LookRotation(forward, up);
         else return Quaternion.identity;
     }
-    #endregion
+#endregion
 
-    #endregion
+#endregion
 
-    #region Public: Set
+#region Public : Set
     /// <summary> Setting spline to closed will generate an extra curve, connecting end point to start point </summary>
     public void SetClosed(bool closed) {
         if (closed != _closed) {
@@ -177,8 +163,7 @@ public class Bezier3DSpline : MonoBehaviour{
                 List<Bezier3DCurve> curveList = new List<Bezier3DCurve>(curves);
                 curveList.Add(new Bezier3DCurve(curves[CurveCount - 1].d, -curves[CurveCount - 1].c, -curves[0].b, curves[0].a, cacheDensity));
                 curves = curveList.ToArray();
-            }
-            else {
+            } else {
                 List<Bezier3DCurve> curveList = new List<Bezier3DCurve>(curves);
                 curveList.RemoveAt(CurveCount - 1);
                 curves = curveList.ToArray();
@@ -209,8 +194,7 @@ public class Bezier3DSpline : MonoBehaviour{
             orientations.RemoveAt(0);
 
             SetKnot(0, knot);
-        }
-        else if (i == CurveCount) {
+        } else if (i == CurveCount) {
 
             List<Bezier3DCurve> curveList = new List<Bezier3DCurve>(curves);
             curveList.RemoveAt(i - 1);
@@ -220,8 +204,7 @@ public class Bezier3DSpline : MonoBehaviour{
             orientations.RemoveAt(i);
 
             if (autoKnot[KnotCount - 1] != 0) SetKnot(KnotCount - 1, GetKnot(KnotCount - 1));
-        }
-        else {
+        } else {
             int preCurveIndex, postCurveIndex;
             GetCurveIndicesForKnot(i, out preCurveIndex, out postCurveIndex);
 
@@ -290,8 +273,7 @@ public class Bezier3DSpline : MonoBehaviour{
                 if (preKnotPreCurveIndex != -1) {
                     AutomateHandles(preKnotIndex, ref preKnot, curves[preKnotPreCurveIndex].a, knot.position);
                     curves[preKnotPreCurveIndex] = new Bezier3DCurve(curves[preKnotPreCurveIndex].a, curves[preKnotPreCurveIndex].b, preKnot.handleIn, preKnot.position, cacheDensity);
-                }
-                else {
+                } else {
                     AutomateHandles(preKnotIndex, ref preKnot, Vector3.zero, knot.position);
                 }
             }
@@ -306,8 +288,7 @@ public class Bezier3DSpline : MonoBehaviour{
                 if (postKnotPostCurveIndex != -1) {
                     AutomateHandles(postKnotIndex, ref postKnot, knot.position, curves[postKnotPostCurveIndex].d);
                     curves[postKnotPostCurveIndex] = new Bezier3DCurve(postKnot.position, postKnot.handleOut, curves[postKnotPostCurveIndex].c, curves[postKnotPostCurveIndex].d, cacheDensity);
-                }
-                else {
+                } else {
                     AutomateHandles(postKnotIndex, ref postKnot, knot.position, Vector3.zero);
                 }
             }
@@ -335,9 +316,9 @@ public class Bezier3DSpline : MonoBehaviour{
         autoKnot.Reverse();
         orientations.Reverse();
     }
-    #endregion
+#endregion
 
-    #endregion
+#endregion
 
     public struct Knot {
         public Vector3 position;
@@ -360,7 +341,7 @@ public class Bezier3DSpline : MonoBehaviour{
         }
     }
 
-    #region Private methods
+#region Private methods
     private Vector3 GetUp(float dist, Vector3 tangent, bool local) {
         float t = DistanceToTime(dist);
         t *= CurveCount;
@@ -369,8 +350,8 @@ public class Bezier3DSpline : MonoBehaviour{
         int t_a = 0, t_b = 0;
 
         //Find preceding rotation
-        for (int i = Mathf.Min((int)t, CurveCount); i >= 0; i--) {
-            i = (int)Mathf.Repeat(i, KnotCount - 1);
+        for (int i = Mathf.Min((int) t, CurveCount); i >= 0; i--) {
+            i = (int) Mathf.Repeat(i, KnotCount - 1);
             if (orientations[i].HasValue) {
                 rot_a = orientations[i].Value;
                 rot_b = orientations[i].Value;
@@ -380,7 +361,7 @@ public class Bezier3DSpline : MonoBehaviour{
             }
         }
         //Find proceding rotation
-        for (int i = Mathf.Max((int)t + 1, 0); i < orientations.Count; i++) {
+        for (int i = Mathf.Max((int) t + 1, 0); i < orientations.Count; i++) {
             if (orientations[i].HasValue) {
                 rot_b = orientations[i].Value;
                 t_b = i;
@@ -433,17 +414,14 @@ public class Bezier3DSpline : MonoBehaviour{
         return curves[CurveCount - 1];
     }
 
-    public Bezier3DCurve GetCurveIndexTime(float splineDist, out int index, out float curveTime)
-    {
+    public Bezier3DCurve GetCurveIndexTime(float splineDist, out int index, out float curveTime) {
         Bezier3DCurve result;
-        for (int i = 0; i < CurveCount; i++)
-        {
+        for (int i = 0; i < CurveCount; i++) {
             result = curves[i];
             if (result.length < splineDist) splineDist -= result.length;
-            else
-            {
+            else {
                 index = i;
-                curveTime = result.Dist2Time(splineDist);                
+                curveTime = result.Dist2Time(splineDist);
                 return result;
             }
         }
@@ -461,7 +439,7 @@ public class Bezier3DSpline : MonoBehaviour{
                 return curves[i];
             }
         }
-        curveDist = curves[CurveCount -1].length;
+        curveDist = curves[CurveCount - 1].length;
         return curves[CurveCount - 1];
     }
 
@@ -498,18 +476,15 @@ public class Bezier3DSpline : MonoBehaviour{
         if (!closed) {
             if (i == 0) {
                 knot.handleOut = CB * -amount;
-            }
-            else if (i == CurveCount) {
+            } else if (i == CurveCount) {
                 knot.handleIn = AB * -amount;
-            }
-            else {
+            } else {
                 knot.handleOut = -AB_CB * CB.magnitude * amount;
                 knot.handleIn = AB_CB * AB.magnitude * amount;
             }
-        }
-        else {
+        } else {
             if (KnotCount == 2) {
-                Vector3 left = new Vector3(AB.z, 0,-AB.x) * amount;
+                Vector3 left = new Vector3(AB.z, 0, -AB.x) * amount;
                 if (i == 0) {
                     knot.handleIn = left;
                     knot.handleOut = -left;
@@ -518,10 +493,9 @@ public class Bezier3DSpline : MonoBehaviour{
                     knot.handleIn = left;
                     knot.handleOut = -left;
                 }
-            }
-            else {
-            knot.handleIn = AB_CB * AB.magnitude * amount;
-            knot.handleOut = -AB_CB * CB.magnitude * amount;
+            } else {
+                knot.handleIn = AB_CB * AB.magnitude * amount;
+                knot.handleOut = -AB_CB * CB.magnitude * amount;
             }
         }
     }
@@ -533,20 +507,21 @@ public class Bezier3DSpline : MonoBehaviour{
         }
         return length;
     }
-    #endregion
+#endregion
 
     /// <summary> Unity doesn't support serialization of nullable types, so here's a custom struct that does exactly the same thing </summary>
     [Serializable]
     protected struct NullableQuaternion {
         public Quaternion Value { get { return rotation; } }
-        public Quaternion? NullableValue { get { if (hasValue) return rotation; else return null; } }
+        public Quaternion? NullableValue { get { if (hasValue) return rotation;
+                else return null; } }
         public bool HasValue { get { return hasValue; } }
 
         [SerializeField] private Quaternion rotation;
         [SerializeField] private bool hasValue;
 
         public NullableQuaternion(Quaternion? rot) {
-            rotation = rot.HasValue?rot.Value:Quaternion.identity;
+            rotation = rot.HasValue?rot.Value : Quaternion.identity;
             hasValue = rot.HasValue;
         }
 
@@ -560,7 +535,7 @@ public class Bezier3DSpline : MonoBehaviour{
         //Set color depending on selection
         if (Array.IndexOf(UnityEditor.Selection.gameObjects, gameObject) >= 0) {
             Gizmos.color = Color.yellow;
-        } else  Gizmos.color = new Color(1, 0.6f, 0f);
+        } else Gizmos.color = new Color(1, 0.6f, 0f);
 
         //Loop through each curve in spline
         for (int i = 0; i < CurveCount; i++) {
