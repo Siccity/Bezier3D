@@ -24,7 +24,6 @@ public class Bezier3DSpline : MonoBehaviour{
     /// <summary> Automatic knots don't have handles. Instead they have a percentage and adjust their handles accordingly. A percentage of 0 indicates that this is not automatic </summary>
     [SerializeField] protected List<float> autoKnot = new List<float>() { 0, 0 };
     [SerializeField] protected List<NullableQuaternion> orientations = new List<NullableQuaternion>() { new NullableQuaternion(null), new NullableQuaternion(null) };
-    [SerializeField] protected Vector3[] tangentCache = new Vector3[0];
 
     #region Public methods
 
